@@ -1,0 +1,38 @@
+:root {
+    --one: 3, 3, 3;
+    --two: 8, 8, 8;
+    --three: 15, 15, 15;
+    --four: 25, 25, 25;
+    --text: 225, 225, 225;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: rgb(var(--one));
+    color: rgb(var(--text));
+}
+
+.flex {
+    display: flex;
+
+    &.y {
+        flex-direction: column;
+    }
+
+    &.x {
+        flex-direction: row;
+    }
+
+    &>.fill {
+        flex: 1;
+    }
+}
+
+.sidebar {
+    background-color: rgb(var(--two));
+    height: calc(100vh - 1em);
+    padding: .5em;
+}

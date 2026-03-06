@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="flex x">
+        <div class="flex fit y sidebar">
+            <div class="button">
+                <div class="icon">build</div>
+                <div class="fill">General</div>
+            </div>
+        </div>
+        <div class="flex fill y">
+            <div class="settings_section">
+                <div class="grouped_settings">
+                    <div class="setting_unit">
+                        <div class="setting_text">
+                            Toggle setting
+                        </div>
+                        <div class="setting_toggle" data-setting="toggleSetting"></div>
+                    </div>
+                    <div class="setting_unit">
+                        <div class="setting_text">
+                            Input setting
+                        </div>
+                        <input type="text" data-setting="inputSetting">
+                    </div>
+                    <div class="setting_unit">
+                        <div class="setting_text">
+                            Dropdown setting
+                        </div>
+                        <div class="setting_dropdown" data-setting="dropdownSetting">
+                            <div class="current_element">Item 1</div>
+                            <div class="dropdown_content">
+                                <div class="item">Item 1</div>
+                                <div class="item">Item 2</div>
+                                <div class="item">Item 3</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
