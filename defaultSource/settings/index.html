@@ -11,32 +11,42 @@
 <body>
     <div class="flex x">
         <div class="flex fit y sidebar">
-            <div class="button">
+            <div class="button active">
                 <div class="icon">build</div>
                 <div class="fill">General</div>
             </div>
+            <div class="button">
+                <div class="icon">brush</div>
+                <div class="fill">Theme</div>
+            </div>
         </div>
         <div class="flex fill y">
-            <div class="settings_section">
+            <div class="settings_section fill">
+                <div class="label">Basics</div>
                 <div class="grouped_settings">
                     <div class="setting_unit">
                         <div class="setting_text">
                             Toggle setting
                         </div>
-                        <div class="setting_toggle" data-setting="toggleSetting"></div>
+                        <div class="setting_toggle checked" data-setting="toggleSetting"></div>
                     </div>
                     <div class="setting_unit">
                         <div class="setting_text">
                             Input setting
                         </div>
-                        <input type="text" data-setting="inputSetting">
+                        <input class="setting_button" type="button" data-setting="buttonSetting" value="Click Me">
                     </div>
                     <div class="setting_unit">
                         <div class="setting_text">
                             Dropdown setting
                         </div>
                         <div class="setting_dropdown" data-setting="dropdownSetting">
-                            <div class="current_element">Item 1</div>
+                            <div class="current_element active">
+                                <div class="current_element_text">
+                                    Item 2
+                                </div>
+                                <div class="icon">keyboard_arrow_down</div>
+                            </div>
                             <div class="dropdown_content">
                                 <div class="item">Item 1</div>
                                 <div class="item">Item 2</div>

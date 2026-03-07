@@ -1,0 +1,22 @@
+{
+    "name":"Settings",
+    "author":"ozone",
+    "description":"An app to manage Ozone Shell settings.",
+    "permissions":["settings", "files"],
+    "pronouns":"she/her",
+    "sources":[
+        {
+            "name": "index.html",
+            "type": "html"
+        },
+        {
+            "name": "script.js",
+            "type": "js"
+        },
+        {
+            "name": "style.css",
+            "type": "css"
+        }
+    ],
+    "version": "0.1"
+}
