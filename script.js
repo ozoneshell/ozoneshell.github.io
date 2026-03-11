@@ -47,6 +47,26 @@ async function initializeOzone() {
         const appURL = new URL("defaultSource/" + app, window.location.href).href
         await packageAppFromURL(appURL)
     }
+    await copySharedAssets();
+}
+
+async function copySharedAssets() {
+    const sharedAssets = ["google_sans.ttf", "icons.woff2"];
+    const base = `/system/sharedAssets`;
+
+    await Promise.all(
+        sharedAssets.map(async file => {
+            try {
+                const url = new URL(`defaultSource/sharedAssets/${file}`, window.location.href).href;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Failed to fetch " + url);
+                const blob = await res.blob();
+                await writeFile(`${base}/${file}`, blob);
+            } catch (e) {
+                console.error(e);
+            }
+        })
+    );
 }
 
 async function packageAppFromURL(appURL) {

@@ -85,13 +85,13 @@ body {
 @font-face {
     font-family: 'Material Symbols Rounded';
     font-style: normal;
-    src: url("../sharedAssets/icons.woff2") format('woff2');
+    src: url("sharedAssets/icons.woff2") format('woff2');
 }
 
 @font-face {
     font-family: "Google Sans";
     font-style: normal;
-    src: url("../sharedAssets/google_sans.ttf") format('truetype');
+    src: url("sharedAssets/google_sans.ttf") format('truetype');
 }
 
 .icon {

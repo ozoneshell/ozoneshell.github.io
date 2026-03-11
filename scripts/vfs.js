@@ -41,11 +41,14 @@ async function ensureRoot() {
     const tx = db.transaction("files", "readwrite")
     const store = tx.objectStore("files")
     const root = await reqp(store.get("/"))
-    if (!root) store.put({ path: "/", type: "folder", parent: null, meta: {} })
+    let existed = true
+    if (!root) {
+        store.put({ path: "/", type: "folder", parent: null, meta: {} })
+        existed = false
+    }
     await txdone(tx)
+    return existed
 }
-
-ensureRoot()
 
 async function exists(path) {
     path = norm(path)
