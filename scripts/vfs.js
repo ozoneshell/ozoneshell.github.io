@@ -25,6 +25,17 @@ const parentOf = p => {
     return r || "/"
 }
 
+const dbp = new Promise((res, rej) => {
+    const req = indexedDB.open("ozoneVFS", 1)
+    req.onupgradeneeded = e => {
+        const db = e.target.result
+        const store = db.createObjectStore("files", { keyPath: "path" })
+        store.createIndex("parent", "parent")
+    }
+    req.onsuccess = e => res(e.target.result)
+    req.onerror = e => rej(e.target.error)
+})
+
 async function ensureRoot() {
     const db = await dbp
     const tx = db.transaction("files", "readwrite")
@@ -33,6 +44,8 @@ async function ensureRoot() {
     if (!root) store.put({ path: "/", type: "folder", parent: null, meta: {} })
     await txdone(tx)
 }
+
+ensureRoot()
 
 async function exists(path) {
     path = norm(path)
@@ -142,28 +155,4 @@ async function remove(path) {
     }
 
     await txdone(tx)
-}
-
-async function vfs() {
-    return new Promise((res, rej) => {
-        let initialized = false
-
-        const req = indexedDB.open("ozoneVFS", 1)
-
-        req.onupgradeneeded = e => {
-            initialized = true
-            const db = e.target.result
-            const store = db.createObjectStore("files", { keyPath: "path" })
-            store.createIndex("parent", "parent")
-            store.put({ path: "/", type: "folder", parent: null, meta: {} })
-        }
-
-        req.onsuccess = e => {
-            const db = e.target.result
-            dbp = Promise.resolve(db)
-            res(initialized ? "initialized" : "loaded")
-        }
-
-        req.onerror = e => rej(e.target.error)
-    })
 }

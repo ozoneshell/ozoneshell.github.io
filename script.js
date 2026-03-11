@@ -6,7 +6,7 @@ setInterval(() => {
     loader.innerText = arr[Math.floor(Math.random() * arr.length)];
 }, 3500);
 var state = {
-    defaultApps: ["files", "settings", "camera", "gallery"],
+    defaultApps: ["files", "settings"],
     appRepo: "additionalApps/",
     "mimedb": {}
 }
@@ -16,14 +16,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const res = await fetch(mimeurl)
     if (!res.ok) throw new Error("Failed to fetch " + mimeurl)
 
-    const status = await vfs()
+    const status = await ensureRoot();
 
-    if (status === "initialized") {
+    if (!status) {
         console.log("fresh filesystem");
         initializeOzone();
-    }
-
-    if (status === "loaded") {
+    } else {
         console.log("existing filesystem");
     }
 
@@ -41,6 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await packageAppFromURL(appURL);
     }
 
+    navigator.serviceWorker.register("/sw.js")
 })
 
 async function initializeOzone() {
@@ -70,7 +69,7 @@ async function packageAppFromURL(appURL) {
                 const path = `${base}/${file}`
 
                 await writeFile(path, blob)
-            } catch {}
+            } catch { }
         })
     )
 
@@ -81,7 +80,7 @@ async function packageAppFromURL(appURL) {
             const landingBlob = await lr.blob()
             await writeFile(`${base}/index.html`, landingBlob)
         }
-    } catch {}
+    } catch { }
 
     const manifestBlob = new Blob(
         [JSON.stringify(data, null, 2)],
