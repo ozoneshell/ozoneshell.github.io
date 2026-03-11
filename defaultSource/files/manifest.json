@@ -1,0 +1,15 @@
+{
+    "name": "Files",
+    "author": "ozone",
+    "description": "An app to manage Ozone Shell settings.",
+    "permissions": [
+        "settings",
+        "files"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1"
+}

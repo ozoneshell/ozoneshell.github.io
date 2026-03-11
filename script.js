@@ -7,10 +7,28 @@ setInterval(() => {
 }, 3500);
 var state = {
     defaultApps: ["files", "settings", "camera", "gallery"],
-    appRepo: "additionalApps/"
+    appRepo: "additionalApps/",
+    "mimedb": {}
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+    const mimeurl = "assets/mimedb.json"
+    const res = await fetch(mimeurl)
+    if (!res.ok) throw new Error("Failed to fetch " + mimeurl)
+
+    const status = await vfs()
+
+    if (status === "initialized") {
+        console.log("fresh filesystem");
+        initializeOzone();
+    }
+
+    if (status === "loaded") {
+        console.log("existing filesystem");
+    }
+
+    const data = await res.json()
+    state.mimedb = data;
     let directlyLoadApp = new URLSearchParams(window.location.search).get("app")
     if (directlyLoadApp) {
         let appURL = null
@@ -20,46 +38,57 @@ document.addEventListener("DOMContentLoaded", async () => {
             appURL = state.appRepo + directlyLoadApp.replace("/", "-")
         }
         appURL = new URL(appURL, window.location.href).href
-        let blob = await packageAppFromURL(appURL);
-        const url = URL.createObjectURL(blob)
-        location.replace(url)
+        await packageAppFromURL(appURL);
     }
+
 })
+
+async function initializeOzone() {
+    for (const app of state.defaultApps) {
+        const appURL = new URL("defaultSource/" + app, window.location.href).href
+        await packageAppFromURL(appURL)
+    }
+}
 
 async function packageAppFromURL(appURL) {
     const manifestURL = appURL + "/manifest.json"
     const res = await fetch(manifestURL)
-    if (!res.ok) throw new Error("Failed to fetch " + manifestURL)
+    if (!res.ok) throw Error("Failed to fetch " + manifestURL)
 
     const data = await res.json()
-    const sources = data.sources
+    const base = `/system/${data.author}/${data.name}`
+    const sources = data.sources || []
 
-    let html = ""
-    let css = []
-    let js = []
+    await Promise.all(
+        sources.map(async file => {
+            try {
+                const fileURL = appURL + "/" + file
+                const r = await fetch(fileURL)
+                if (!r.ok) return
 
-    for (const file of sources) {
-        const fileURL = appURL + "/" + file.name
-        const r = await fetch(fileURL)
-        if (!r.ok) throw new Error("Failed to fetch " + fileURL)
-        const text = await r.text()
-// file types has to be removed.
-        if (file.type === "html") html = text
-        if (file.type === "css") css.push(text)
-        if (file.type === "js") js.push(text)
-    }
+                const blob = await r.blob()
+                const path = `${base}/${file}`
 
-    const cssBlock = `<style>${css.join("\n")}</style>`
-    const jsBlock = `<script>${js.join("\n")}</script>`
+                await writeFile(path, blob)
+            } catch {}
+        })
+    )
 
-    let finalHTML = html
+    try {
+        const landingURL = appURL + "/" + data.landing
+        const lr = await fetch(landingURL)
+        if (lr.ok) {
+            const landingBlob = await lr.blob()
+            await writeFile(`${base}/index.html`, landingBlob)
+        }
+    } catch {}
 
-    if (html.includes("</head>")) finalHTML = finalHTML.replace("</head>", cssBlock + "</head>")
-    else finalHTML = cssBlock + finalHTML
+    const manifestBlob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+    )
 
-    if (finalHTML.includes("</body>")) finalHTML = finalHTML.replace("</body>", jsBlock + "</body>")
-    else finalHTML += jsBlock
+    await writeFile(`${base}/manifest.json`, manifestBlob)
 
-    const blob = new Blob([finalHTML], { type: "text/html" })
-    return blob
+    return base
 }

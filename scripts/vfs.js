@@ -16,26 +16,14 @@ const norm = p => {
     if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1)
     return p
 }
-
 const parentOf = p => {
     p = norm(p)
     if (p === "/") return null
     const s = p.split("/")
     s.pop()
-    const r = s.join("")
+    const r = s.join("/")
     return r || "/"
 }
-
-const dbp = new Promise((res, rej) => {
-    const req = indexedDB.open("ozoneVFS", 1)
-    req.onupgradeneeded = e => {
-        const db = e.target.result
-        const store = db.createObjectStore("files", { keyPath: "path" })
-        store.createIndex("parent", "parent")
-    }
-    req.onsuccess = e => res(e.target.result)
-    req.onerror = e => rej(e.target.error)
-})
 
 async function ensureRoot() {
     const db = await dbp
@@ -45,8 +33,6 @@ async function ensureRoot() {
     if (!root) store.put({ path: "/", type: "folder", parent: null, meta: {} })
     await txdone(tx)
 }
-
-ensureRoot()
 
 async function exists(path) {
     path = norm(path)
@@ -74,15 +60,38 @@ async function mkdir(path) {
     await txdone(tx)
 }
 
-async function writeFile(path, data) {
+async function mkdirp(path) {
     path = norm(path)
+    if (path === "/") return
+
     const db = await dbp
-    const parent = parentOf(path)
     const tx = db.transaction("files", "readwrite")
     const store = tx.objectStore("files")
 
-    const p = await reqp(store.get(parent))
-    if (!p || p.type !== "folder") throw Error("invalid parent")
+    const parts = path.split("/").filter(Boolean)
+    let cur = ""
+
+    for (const p of parts) {
+        cur += "/" + p
+        const v = await reqp(store.get(cur))
+        if (!v) {
+            const parent = parentOf(cur)
+            store.put({ path: cur, type: "folder", parent, meta: {} })
+        }
+    }
+
+    await txdone(tx)
+}
+
+async function writeFile(path, data) {
+    path = norm(path)
+    const parent = parentOf(path)
+
+    if (parent) await mkdirp(parent)
+
+    const db = await dbp
+    const tx = db.transaction("files", "readwrite")
+    const store = tx.objectStore("files")
 
     store.put({
         path,
@@ -106,7 +115,7 @@ async function readFile(path) {
     return v
 }
 
-async function list(path) {
+async function list(path = "/") {
     path = norm(path)
     const db = await dbp
     const tx = db.transaction("files", "readonly")
@@ -133,4 +142,28 @@ async function remove(path) {
     }
 
     await txdone(tx)
+}
+
+async function vfs() {
+    return new Promise((res, rej) => {
+        let initialized = false
+
+        const req = indexedDB.open("ozoneVFS", 1)
+
+        req.onupgradeneeded = e => {
+            initialized = true
+            const db = e.target.result
+            const store = db.createObjectStore("files", { keyPath: "path" })
+            store.createIndex("parent", "parent")
+            store.put({ path: "/", type: "folder", parent: null, meta: {} })
+        }
+
+        req.onsuccess = e => {
+            const db = e.target.result
+            dbp = Promise.resolve(db)
+            res(initialized ? "initialized" : "loaded")
+        }
+
+        req.onerror = e => rej(e.target.error)
+    })
 }
