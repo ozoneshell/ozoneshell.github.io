@@ -87,4 +87,9 @@ document.querySelectorAll("[data-setting]").forEach(el => {
     }
 
     if (instance) settings[instance.key] = instance
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+    const f = await api.readFile("/system/ozone/Settings/index.html")
+    console.log(f)
 })

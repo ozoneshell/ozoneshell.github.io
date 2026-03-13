@@ -1,7 +1,157 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --one: 25, 25, 26;
+    --two: 35, 36, 37;
+    --three: 47, 49, 49;
+    --four: 60, 60, 60;
+    --five: 140, 143, 141;
+
+    --highone: 4, 76, 117;
+    --highlight: 165, 195, 249;
+    --highlighttext: 15, 50, 110;
+
+    --highdark: 15, 50, 110;
+    --hightext: 191, 229, 254;
+
+    --text: 240, 240, 240;
+}
 
 body {
     font-family: Arial, sans-serif;
-	margin: 0;
+    margin: 0;
     padding: 0;
     box-sizing: border-box;
+    background-color: rgb(var(--one));
+    color: rgb(var(--text));
+    font-family: "Google Sans",
+        sans-serif;
+}
+
+.flex {
+    display: flex;
+
+    &.y {
+        flex-direction: column;
+    }
+
+    &.x {
+        flex-direction: row;
+    }
+
+    &>.fill {
+        flex: 1;
+    }
+
+    &>.fit {
+        width: fit-content;
+    }
+}
+
+.sidebar {
+    background-color: rgb(var(--two));
+    height: calc(100vh - 1em);
+    padding: .5em;
+    min-width: 290px;
+    border-right: 1px solid rgb(var(--three));
+
+}
+
+@font-face {
+    font-family: 'Material Symbols Rounded';
+    font-style: normal;
+    src: url("../sharedAssets/icons.woff2") format('woff2');
+}
+
+@font-face {
+    font-family: "Google Sans";
+    font-style: normal;
+    src: url("../sharedAssets/google_sans.ttf") format('truetype');
+}
+
+.icon {
+    font-family: 'Material Symbols Rounded';
+}
+
+.topbar {
+    &>.menu_button_bar {
+        z-index: 2;
+        padding: 0 10px;
+        padding-top: 5px;
+
+        &>.menu_button {
+            padding: .5em 1em;
+            position: relative;
+
+            &.active {
+                background-color: rgb(var(--two));
+                border-bottom: transparent;
+                box-shadow: 0 2px rgb(var(--two));
+                border-radius: 10px 10px 0 0;
+
+                &::before {
+                    content: '';
+                    position: absolute;
+                    width: 10px;
+                    height: 10px;
+                    background-color: rgb(var(--two));
+                    mask: radial-gradient(10px at 0% 0%, #0000 98%, #000);
+                    bottom: -1px;
+                    left: -10px;
+                }
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    width: 10px;
+                    height: 10px;
+                    background-color: rgb(var(--two));
+                    mask: radial-gradient(10px at 100% 0, #0000 98%, #000);
+                    bottom: -1px;
+                    right: -10px;
+                }
+            }
+        }
+    }
+
+    .menu_bar {
+        background-color: rgb(var(--two));
+        border: 1px solid rgb(var(--three));
+
+        &>.page {
+            padding: .5em;
+            gap: .5em;
+        }
+
+        & .menu_action {
+            padding: .5em .8em;
+            display: flex;
+            flex-direction: row;
+            background-color: rgb(var(--three));
+            gap: .5em;
+            border-radius: .5em;
+        }
+    }
+}
+
+.view1 {
+    .content_section {
+
+        &>.content_topbar {
+            background-color: rgb(var(--two));
+            border: 1px solid rgb(var(--three));
+            gap: .2em;
+            &>div {
+                padding: .5em;
+                display: flex;
+                flex-direction: row;
+                gap: .5em;
+            }
+        }
+    }
 }

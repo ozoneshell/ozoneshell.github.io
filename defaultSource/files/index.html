@@ -1,14 +1,67 @@
-
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Page</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-    <h1>Hello, World!</h1>
+    <div class="main_container flex x">
+        <div class="sidebar flex y"></div>
+        <div class="main_content_view fill flex y">
+            <div class="topbar flex y">
+                <div class="menu_button_bar flex x">
+                    <div class="menu_button active">
+                        <span>Folder</span>
+                    </div>
+                    <div class="menu_button">
+                        <span>File</span>
+                    </div>
+                    <div class="menu_button">
+                        <span>View</span>
+                    </div>
+                    <div class="menu_button">
+                        <span>Zip</span>
+                    </div>
+                </div>
+                <div class="menu_bar flex x">
+                    <div class="page flex x" data-barpageid="folder">
+                        <div class="menu_action">
+                            <div class="icon">arrow_upward</div>
+                            <span>Parent</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">move_item</div>
+                            <span>Rename</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">delete</div>
+                            <span>Delete</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="view1 flex y">
+                <div class="content_section">
+                    <div class="content_topbar flex x">
+                        <div class="path_input fill flex x">
+                        <div class="icon">folder</div>
+<div>system/ozone/Settings/</div></div>
+                        <div class="path_actions">path actions here</div>
+                    </div>
+                    <div class="main_content"></div>
+                    <div class="bottom_bar"></div>
+                </div>
+                <div class="preview_section">
+
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
+
 </html>

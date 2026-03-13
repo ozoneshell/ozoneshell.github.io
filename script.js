@@ -38,9 +38,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         appURL = new URL(appURL, window.location.href).href
         await packageAppFromURL(appURL);
     }
-
-    navigator.serviceWorker.register("/sw.js")
+    ensureSW()
 })
+
+async function ensureSW() {
+    if (!("serviceWorker" in navigator)) return
+
+    const versions = await fetch("/versions.json").then(r => r.json())
+    const v = versions.osware
+
+    const reg = await navigator.serviceWorker.getRegistration()
+
+    if (!reg) {
+        await navigator.serviceWorker.register(`/sw.js?v=${v}`)
+        localStorage.setItem("osware_sw_version", v)
+        return
+    }
+
+    const current = localStorage.getItem("osware_sw_version")
+
+    if (current != v) {
+        await navigator.serviceWorker.register(`/sw.js?v=${v}`)
+        localStorage.setItem("osware_sw_version", v)
+    }
+}
 
 async function initializeOzone() {
     for (const app of state.defaultApps) {
