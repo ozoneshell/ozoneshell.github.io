@@ -121,6 +121,7 @@ function mime(p) {
 const rpc = {
     readFile,
     writeFile,
+    list,
     ensureRoot
 }
 

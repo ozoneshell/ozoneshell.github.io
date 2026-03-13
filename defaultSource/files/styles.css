@@ -65,17 +65,22 @@ body {
 @font-face {
     font-family: 'Material Symbols Rounded';
     font-style: normal;
-    src: url("../sharedAssets/icons.woff2") format('woff2');
+    src: url("sharedAssets/icons.woff2") format('woff2');
 }
 
 @font-face {
     font-family: "Google Sans";
     font-style: normal;
-    src: url("../sharedAssets/google_sans.ttf") format('truetype');
+    src: url("sharedAssets/google_sans.ttf") format('truetype');
 }
 
 .icon {
     font-family: 'Material Symbols Rounded';
+    font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
 }
 
 .topbar {
@@ -146,6 +151,7 @@ body {
             background-color: rgb(var(--two));
             border: 1px solid rgb(var(--three));
             gap: .2em;
+
             &>div {
                 padding: .5em;
                 display: flex;
@@ -154,4 +160,51 @@ body {
             }
         }
     }
+}
+
+.main_content {
+    display: grid;
+    gap: .5em;
+    grid-template-columns: repeat(auto-fill, 10em);
+    justify-content: start;
+    padding: .5em;
+
+    &>.singular_file {
+        display: flex;
+        flex-direction: column;
+        gap: .3em;
+        padding: 1em;
+        border-radius: .5em;
+        align-items: center;
+        text-align: center;
+
+        &>.icon {
+            font-size: 3em;
+        }
+
+        .fileName {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        &:hover {
+            background-color: rgb(var(--two));
+        }
+    }
+}
+
+.tree-node{
+    --indent:16px;
+    padding-left:calc(var(--depth)*var(--indent) + 8px);
+    background-image:repeating-linear-gradient(
+        to right,
+        #444 0,
+        #444 1px,
+        transparent 1px,
+        transparent var(--indent)
+    );
+    background-size:calc(var(--depth)*var(--indent)) 100%;
+    background-repeat:no-repeat;
 }

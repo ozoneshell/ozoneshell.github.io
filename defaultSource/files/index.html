@@ -10,7 +10,9 @@
 
 <body>
     <div class="main_container flex x">
-        <div class="sidebar flex y"></div>
+        <div class="sidebar flex y">
+            <div id="filesystemTree"></div>
+        </div>
         <div class="main_content_view fill flex y">
             <div class="topbar flex y">
                 <div class="menu_button_bar flex x">
@@ -52,7 +54,16 @@
 <div>system/ozone/Settings/</div></div>
                         <div class="path_actions">path actions here</div>
                     </div>
-                    <div class="main_content"></div>
+                    <div class="main_content" id="filesList">
+                        <div class="singular_file">
+                            <div class="icon">folder</div>
+                            <div class="fileName">hello world.mp4</div>
+                        </div>
+                        <div class="singular_file">
+                            <div class="icon">folder</div>
+                            <div class="fileName">hello world.mp4</div>
+                        </div>
+                    </div>
                     <div class="bottom_bar"></div>
                 </div>
                 <div class="preview_section">
