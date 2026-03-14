@@ -6,7 +6,7 @@ setInterval(() => {
     loader.innerText = arr[Math.floor(Math.random() * arr.length)];
 }, 3500);
 var state = {
-    defaultApps: ["files", "settings"],
+    defaultApps: ["files", "settings", "text"],
     appRepo: "additionalApps/",
     "mimedb": {}
 }

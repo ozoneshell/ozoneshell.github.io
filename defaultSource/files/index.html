@@ -16,16 +16,16 @@
         <div class="main_content_view fill flex y">
             <div class="topbar flex y">
                 <div class="menu_button_bar flex x">
-                    <div class="menu_button active">
+                    <div class="menu_button active" data-openbarpage="folder">
                         <span>Folder</span>
                     </div>
-                    <div class="menu_button">
+                    <div class="menu_button" data-openbarpage="file">
                         <span>File</span>
                     </div>
-                    <div class="menu_button">
+                    <div class="menu_button" data-openbarpage="view">
                         <span>View</span>
                     </div>
-                    <div class="menu_button">
+                    <div class="menu_button" data-openbarpage="zip">
                         <span>Zip</span>
                     </div>
                 </div>
@@ -44,14 +44,38 @@
                             <span>Delete</span>
                         </div>
                     </div>
+                    <div class="page flex x" data-barpageid="file">
+
+                        <div class="menu_action">
+                            <div class="icon">rocket_launch</div>
+                            <span>Open</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">open_in_new</div>
+                            <span>Open with</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">download</div>
+                            <span>Export</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">move_item</div>
+                            <span>Rename</span>
+                        </div>
+                        <div class="menu_action">
+                            <div class="icon">delete</div>
+                            <span>Delete</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="view1 flex y">
                 <div class="content_section">
                     <div class="content_topbar flex x">
                         <div class="path_input fill flex x">
-                        <div class="icon">folder</div>
-<div>system/ozone/Settings/</div></div>
+                            <div class="icon">folder</div>
+                            <div>system/ozone/Settings/</div>
+                        </div>
                         <div class="path_actions">path actions here</div>
                     </div>
                     <div class="main_content" id="filesList">

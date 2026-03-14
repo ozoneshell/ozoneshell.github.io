@@ -1,10 +1,3 @@
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 :root {
     --one: 25, 25, 26;
     --two: 35, 36, 37;
@@ -23,7 +16,6 @@ body {
 }
 
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -92,6 +84,8 @@ body {
         &>.menu_button {
             padding: .5em 1em;
             position: relative;
+            transition: .3s;
+            cursor: pointer;
 
             &.active {
                 background-color: rgb(var(--two));
@@ -127,6 +121,7 @@ body {
     .menu_bar {
         background-color: rgb(var(--two));
         border: 1px solid rgb(var(--three));
+        border-left: none;
 
         &>.page {
             padding: .5em;
@@ -178,6 +173,13 @@ body {
         align-items: center;
         text-align: center;
 
+        &.selected {
+            background-color: rgb(var(--three));
+            &:hover {
+            background-color: rgb(var(--four));
+            }
+        }
+
         &>.icon {
             font-size: 3em;
         }
@@ -195,16 +197,32 @@ body {
     }
 }
 
-.tree-node{
-    --indent:16px;
-    padding-left:calc(var(--depth)*var(--indent) + 8px);
-    background-image:repeating-linear-gradient(
-        to right,
-        #444 0,
-        #444 1px,
-        transparent 1px,
-        transparent var(--indent)
-    );
-    background-size:calc(var(--depth)*var(--indent)) 100%;
-    background-repeat:no-repeat;
+#filesystemTree {
+    padding: 1em;
+    background-color: rgb(var(--one));
+    overflow: auto;
+    max-height: 50vh;
+    border-radius: .5em;
+}
+
+.tree-node {
+    --indent: 16px;
+    padding-left: calc(var(--depth)*var(--indent) + 8px);
+    background-image: repeating-linear-gradient(to right,
+            #444 0,
+            #444 1px,
+            transparent 1px,
+            transparent var(--indent));
+    background-size: calc(var(--depth)*var(--indent)) 100%;
+    background-repeat: no-repeat;
+    padding-bottom: .3em;
+
+    & .subel {
+        padding: .5em 1em;
+        background: rgb(var(--three));
+        width: fit-content;
+        border-radius: .5em;
+        transform: translateX(-1em);
+        min-width: 6em;
+    }
 }

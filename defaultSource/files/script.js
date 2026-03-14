@@ -19,7 +19,7 @@ async function buildTree(dir) {
 }
 function normalize(node) {
     return {
-        name: node.name,
+        name: (node.name == "/") ? "Home" : node.name,
         path: node.path,
         type: node.type,
         children: (node.children || []).map(normalize)
@@ -28,7 +28,10 @@ function normalize(node) {
 function render(node, parent, depth = 0) {
     const el = document.createElement("div")
     el.className = "tree-node"
-    el.textContent = node.name
+    const subel = document.createElement("div");
+    subel.className = "subel";
+    subel.innerText = node.name;
+    el.appendChild(subel);
     el.dataset.path = node.path
     el.style.setProperty("--depth", depth)
     parent.appendChild(el)
@@ -49,7 +52,42 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!el) return
         renderFiles(el.dataset.path)
     })
+
+    renderFiles("/");
+
+    const btns = document.querySelectorAll('[data-openbarpage]')
+    const pages = document.querySelectorAll('.menu_bar .page')
+
+    btns.forEach(btn => {
+        pages.forEach(p => p.style.display = 'none')
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.openbarpage
+
+            pages.forEach(p => p.style.display = 'none')
+            btns.forEach(b => b.classList.remove('active'))
+
+            const page = document.querySelector(`.menu_bar .page[data-barpageid="${id}"]`)
+            if (page) page.style.display = 'flex'
+
+            btn.classList.add('active')
+        })
+    });
+    openTopBarPage("folder");
 })
+
+function openTopBarPage(pageId) {
+    const btns = document.querySelectorAll('[data-openbarpage]')
+    const pages = document.querySelectorAll('.menu_bar .page')
+
+    pages.forEach(p => p.style.display = 'none')
+    btns.forEach(b => b.classList.remove('active'))
+
+    const page = document.querySelector(`.menu_bar .page[data-barpageid="${pageId}"]`)
+    if (page) page.style.display = 'flex'
+
+    const btn = document.querySelector(`[data-openbarpage="${pageId}"]`)
+    if (btn) btn.classList.add('active')
+}
 
 var fileTypeIcons = {
     "json": "data_object",
@@ -73,34 +111,63 @@ function getExtension(name) {
     return i > 0 ? name.slice(i + 1).toLowerCase() : ""
 }
 
-async function renderFiles(path) {
-    console.log("renderfiles", path)
-    const container = document.querySelector("#filesList")
-    container.innerHTML = "";
+class FileItem {
+    constructor(item, container) {
+        this.item = item
+        this.el = document.createElement("div")
+        this.el.className = "singular_file"
 
-    const items = await api.list(path)
-
-    for (const item of items) {
-        const el = document.createElement("div")
-        el.className = "singular_file"
-
-        let fileName = item.path.split("/").pop();
+        const fileName = item.path.split("/").pop()
 
         const icon = document.createElement("div")
         icon.className = "icon"
         icon.textContent = item.type === "folder" ? "folder" : "description"
+
         if (item.type === "file") {
-            let extension = getExtension(fileName);
-            if (Object.keys(fileTypeIcons).includes(extension)) {
-                icon.textContent = fileTypeIcons[extension];
-            }
+            const ext = getExtension(fileName)
+            if (fileTypeIcons[ext]) icon.textContent = fileTypeIcons[ext]
         }
 
         const name = document.createElement("div")
         name.className = "fileName"
         name.textContent = fileName
 
-        el.append(icon, name)
-        container.appendChild(el)
+        this.el.append(icon, name)
+        container.appendChild(this.el)
+
+        this.el.addEventListener("click", e => this.handleClick(e))
+    }
+
+    handleClick() {
+        if (this.el.classList.contains("selected")) {
+            this.open()
+            return
+        }
+        if (this.item.type == "file") {
+            openTopBarPage("file");
+        } else {
+            openTopBarPage("folder");
+        }
+
+        document.querySelectorAll(".singular_file.selected")
+            .forEach(e => e.classList.remove("selected"))
+
+        this.el.classList.add("selected")
+    }
+
+    open() {
+        if (this.item.type === "folder") renderFiles(this.item.path)
+        else api.open(this.item.path)
+    }
+}
+
+async function renderFiles(path) {
+    const container = document.querySelector("#filesList")
+    container.innerHTML = ""
+
+    const items = await api.list(path)
+
+    for (const item of items) {
+        new FileItem(item, container)
     }
 }

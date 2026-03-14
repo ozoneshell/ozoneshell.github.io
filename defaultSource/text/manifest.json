@@ -1,0 +1,14 @@
+{
+    "name": "Text",
+    "author": "ozone",
+    "description": "An app to read and write files in text.",
+    "permissions": [
+        "files"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1"
+}
