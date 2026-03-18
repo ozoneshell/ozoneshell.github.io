@@ -1,5 +1,9 @@
+var state = {
+    "mode": "browser"
+}
+
 async function buildTree(dir) {
-    const entries = await api.list(dir)
+    const entries = await api.files.list(dir)
 
     const node = {
         name: dir.split("/").filter(Boolean).pop() || dir,
@@ -157,7 +161,7 @@ class FileItem {
 
     open() {
         if (this.item.type === "folder") renderFiles(this.item.path)
-        else api.open(this.item.path)
+        else api.apps.open(this.item.path)
     }
 }
 
@@ -165,7 +169,7 @@ async function renderFiles(path) {
     const container = document.querySelector("#filesList")
     container.innerHTML = ""
 
-    const items = await api.list(path)
+    const items = await api.files.list(path)
 
     for (const item of items) {
         new FileItem(item, container)

@@ -32,6 +32,10 @@ async function route(parts) {
         const file = rest.join("/") || "index.html"
         vfsPath = `/system/${creator}/${app}/${file}`
     }
+    if (!vfsPath.startsWith(`/system/${creator}/${app}/`) &&
+        !vfsPath.startsWith(`/system/sharedAssets/`)) {
+        return new Response("Forbidden", { status: 403 })
+    }
 
     const f = await readFile(vfsPath)
 
@@ -80,23 +84,40 @@ class SWBridge {
 
 SWBridge.init()
 
-const api = new Proxy({},{
-    get(_,prop){
-        return (...args)=>SWBridge.call(prop,...args)
+const api = new Proxy({}, {
+    get(_, prop) {
+        return createProxy([prop])
     }
 })
+
+function createProxy(path) {
+    return new Proxy(() => {}, {
+        get(_, prop) {
+            return createProxy([...path, prop])
+        },
+        apply(_, __, args) {
+            return SWBridge.call(path.join("."), ...args)
+        }
+    })
+}
 </script></head>`
         )
 
         return new Response(injected, {
-            headers: { "Content-Type": type }
+            headers: {
+                "Content-Type": type,
+                "Cross-Origin-Opener-Policy": "same-origin"
+            }
         })
     }
 
     const body = f.data instanceof Blob ? f.data : new Blob([f.data])
 
     return new Response(body, {
-        headers: { "Content-Type": type }
+        headers: {
+            "Content-Type": type,
+            "Cross-Origin-Opener-Policy": "same-origin"
+        }
     })
 }
 
@@ -119,20 +140,36 @@ function mime(p) {
 }
 
 const rpc = {
-    readFile,
-    writeFile,
-    list,
-    ensureRoot
+    files: {
+        read: readFile,
+        write: writeFile,
+        list
+    },
+    system: {
+        ensureRoot
+    }
 }
 
 self.addEventListener("message", async e => {
     const d = e.data
     if (d?.type !== "rpc") return
 
-    const fn = rpc[d.method]
+    function resolve(obj, path) {
+        return path.split(".").reduce((o, k) => o?.[k], obj)
+    }
+
+    const fn = resolve(rpc, d.method)
+
     let result = null
 
-    if (fn) result = await fn(...d.args)
+    try {
+        if (fn)
+            result = await fn(...d.args)
+        else
+            console.warn(d.method, "is not a valid endpoint")
+    } catch (e) {
+        console.warn(e)
+    }
 
     e.source.postMessage({
         type: "rpc-res",

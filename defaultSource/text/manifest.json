@@ -10,5 +10,7 @@
         "script.js",
         "styles.css"
     ],
-    "version": "0.1"
+    "version": "0.1",
+    "handle": "text_editor",
+    "capabilities": ["txt", "html", "json", "js", "css", "md", "xml", "xhtml", "diff"]
 }
