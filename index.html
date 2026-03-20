@@ -10,9 +10,16 @@
 </head>
 
 <body>
-    <small id="textloader">Collecting data...</small>
-    <div class="loader"></div>
-    <button onclick="initializeOzone()" style="position: absolute; bottom: 5em; padding: 2em;">Update Everything</button>
+    <div class="tui">
+        <div class="tuiheader">
+            <button onclick="initializeOzone()">Update Everything</button>
+            <button onclick="indexedDB.deleteDatabase('ozoneVFS')">Reset Everything</button>
+        </div>
+        <div id="logs">
+            <div class="log">Welcome to Ozone kernel</div>
+        </div>
+        <input type="text" id="prompt" placeholder="___">
+    </div>
     <script src="script.js"></script>
     <script src="scripts/vfs.js"></script>
 </body>

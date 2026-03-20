@@ -2,9 +2,6 @@
 var loader = document.getElementById("textloader");
 var arr = ["Collecting data...", "Compiling application...", "Downloading assets...", "Mounting local data...", "Installing application..."];
 
-setInterval(() => {
-    loader.innerText = arr[Math.floor(Math.random() * arr.length)];
-}, 3500);
 var state = {
     defaultApps: ["files", "settings", "text"],
     appRepo: "additionalApps/",
@@ -19,16 +16,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const status = await ensureRoot();
 
     if (!status) {
-        console.log("fresh filesystem");
+        log("Initializing filesystem")
         initializeOzone();
     } else {
-        console.log("existing filesystem");
+        log("Resuming filesystem...")
     }
 
     const data = await res.json()
     state.mimedb = data;
     let directlyLoadApp = new URLSearchParams(window.location.search).get("app")
     if (directlyLoadApp) {
+        log("Installing application...")
         let appURL = null
         if (!directlyLoadApp.includes("/") && state.defaultApps.includes(directlyLoadApp)) {
             appURL = "defaultSource/" + directlyLoadApp
@@ -52,6 +50,8 @@ async function ensureSW() {
     if (!reg) {
         await navigator.serviceWorker.register(`/sw.js?v=${v}`)
         localStorage.setItem("osware_sw_version", v)
+
+        log("Service worker registered")
         return
     }
 
@@ -60,6 +60,7 @@ async function ensureSW() {
     if (current != v) {
         await navigator.serviceWorker.register(`/sw.js?v=${v}`)
         localStorage.setItem("osware_sw_version", v)
+        log("Service worker upgraded")
     }
 }
 
@@ -82,6 +83,7 @@ async function copySharedAssets() {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error("Failed to fetch " + url);
                 const blob = await res.blob();
+                log(`Downloaded ${base}/${file}`)
                 await writeFile(`${base}/${file}`, blob);
             } catch (e) {
                 console.error(e);
@@ -99,10 +101,14 @@ async function packageAppFromURL(appURL) {
     const base = `/system/${data.author}/${data.name}`
     const sources = data.sources || []
 
+
+        log(`Installing ${data.author}/${data.name}...`)
+
     await Promise.all(
         sources.map(async file => {
             try {
                 const fileURL = appURL + "/" + file
+                log(` ... ${file}`)
                 const r = await fetch(fileURL)
                 if (!r.ok) return
 
@@ -119,6 +125,7 @@ async function packageAppFromURL(appURL) {
         const lr = await fetch(landingURL)
         if (lr.ok) {
             const landingBlob = await lr.blob()
+                log(` ... index.html`)
             await writeFile(`${base}/index.html`, landingBlob)
         }
     } catch { }
@@ -131,4 +138,11 @@ async function packageAppFromURL(appURL) {
     await writeFile(`${base}/manifest.json`, manifestBlob)
 
     return base
+}
+
+function log(text) {
+    let x = document.createElement("div");
+    x.className = "log";
+    x.innerText = text;
+    document.getElementById("logs").appendChild(x)
 }

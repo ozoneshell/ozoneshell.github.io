@@ -1,20 +1,13 @@
 body {
-    display: flex;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: black;
-    color: white;
-    flex-direction: column;
-    justify-content: center;
-    font-family: sans-serif;
-    gap: 1em;
-}
-
-canvas {
-    position: absolute;
-    top: 0;
-    z-index: -1;
+  display: flex;
+  align-items: stretch;
+  height: 100vh;
+  margin: 0;
+  background-color: black;
+  color: rgb(219, 219, 219);
+  flex-direction: column;
+  font-family: sans-serif;
+  gap: 1em;
 }
 
 .loader {
@@ -22,7 +15,7 @@ canvas {
   height: 5px;
   border-radius: 50%;
   display: block;
-  margin:15px auto;
+  margin: 15px auto;
   position: relative;
   color: #FFF;
   opacity: .7;
@@ -35,28 +28,82 @@ canvas {
   0% {
     box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
   }
+
   12% {
     box-shadow: 100px 0 white, 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
   }
+
   25% {
     box-shadow: 110px 0 white, 100px 0 white, 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
   }
+
   36% {
     box-shadow: 120px 0 white, 110px 0 white, 100px 0 white, 0px 0 rgba(255, 255, 255, 0);
   }
+
   50% {
     box-shadow: 130px 0 white, 120px 0 white, 110px 0 white, 100px 0 white;
   }
+
   62% {
     box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 white, 120px 0 white, 110px 0 white;
   }
+
   75% {
     box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 130px 0 white, 120px 0 white;
   }
+
   87% {
     box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 130px 0 white;
   }
+
   100% {
     box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.tui {
+  display: flex;
+  flex-direction: column;
+  gap: .3em;
+  flex: 1;
+  background: rgb(2, 2, 2);
+  border-radius: 1em;
+  padding: 1em;
+  margin: 1em;
+
+  &>#logs {
+    flex: 1;
+    overflow-y: auto;
+    background-color: black;
+    padding: 1em;
+    border-radius:.5em;
+  }
+}
+
+#prompt {
+  padding: 1em;
+  font-size: inherit;
+  background: rgb(10, 10, 10);
+  border: none;
+  outline: 0;
+  border-radius: .5em;
+  color: inherit;
+}
+
+button {
+  padding: 1em;
+  font-size: inherit;
+  background: rgb(10, 10, 10);
+  border: none;
+  outline: 0;
+  border-radius: .5em;
+  color: inherit;
+}
+
+.log {
+  padding: .3em;
+  &:nth-child(even) {
+    color: #ababab;
   }
 }
