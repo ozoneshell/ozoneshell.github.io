@@ -23,7 +23,11 @@
 ## App declarations
 - apps can register window type and sizes even per function. (files app can spawn on popup window if its opened as file picker)
 
+# More stuff
+- make shared assets accessible to everything, make that folder available as url.
 
+
+# Tree
 - apps-file registry
 system dialogs
     - open file method
@@ -35,6 +39,10 @@ system dialogs
     - choose folder method
     - select files method
     - select files with type filters
+- files app features
+    - extract zip files
+    - compress folder into zip
+    - export files
 - manage apps methods
     - uninstall app
     - register apps from folder

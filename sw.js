@@ -24,7 +24,6 @@ async function route(request, parts) {
     const [creator, app, ...rest] = parts
 
     let vfsPath
-
     if (rest[0] === "sharedAssets") {
         const file = rest.slice(1).join("/") || "index.html"
         vfsPath = `/system/sharedAssets/${file}`
@@ -33,22 +32,34 @@ async function route(request, parts) {
         vfsPath = `/system/${creator}/${app}/${file}`
     }
 
-    if (!vfsPath.startsWith(`/system/${creator}/${app}/`) &&
-        !vfsPath.startsWith(`/system/sharedAssets/`)) {
+    if (!/^\/system\/(sharedAssets|[^/]+\/[^/]+)\//.test(vfsPath)) {
         return new Response("Forbidden", { status: 403 })
     }
 
     const f = await readFile(vfsPath)
-
     if (!f || f.type !== "file")
         return new Response("Not found", { status: 404 })
 
     const type = mime(vfsPath)
 
     if (type !== "text/html") {
-        const body = f.data instanceof Blob ? f.data : new Blob([f.data])
-
-        return new Response(body, {
+        const stream = new ReadableStream({
+            start(controller) {
+                const chunk = f.data instanceof Blob ? f.data : new Blob([f.data])
+                const reader = chunk.stream().getReader()
+                function push() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) controller.close()
+                        else {
+                            controller.enqueue(value)
+                            push()
+                        }
+                    })
+                }
+                push()
+            }
+        })
+        return new Response(stream, {
             headers: {
                 "Content-Type": type,
                 "Cross-Origin-Opener-Policy": "same-origin"
@@ -56,20 +67,13 @@ async function route(request, parts) {
         })
     }
 
-    const text = f.data instanceof Blob
-        ? await f.data.text()
-        : String(f.data)
-
+    const text = f.data instanceof Blob ? await f.data.text() : String(f.data)
     const isStage = request.headers.get("X-App-Stage") === "1"
 
     if (isStage) {
-        return new Response(text, {
-            headers: {
-                "Content-Type": type,
-                "Cross-Origin-Opener-Policy": "same-origin"
-            }
-        })
+        return new Response(text, { headers: { "Content-Type": type } })
     }
+
 
     const injected = `<!DOCTYPE html>
 <html>
@@ -86,12 +90,6 @@ async function route(request, parts) {
         const f = features ? features + ',noopener,noreferrer' : 'noopener,noreferrer'
         return _open.call(window, url, target || '_blank', f)
     }
-
-    document.addEventListener('click', e => {
-        const a = e.target.closest('a[target="_blank"]')
-        if (!a) return
-        a.rel = 'noopener noreferrer'
-    })
 
     class SWBridge {
         static #id = 0
@@ -124,14 +122,21 @@ async function route(request, parts) {
     }
 
     SWBridge.init()
+    const proxyCache = new Map();
 
-  const api = new Proxy({}, {
+ const api = new Proxy({}, {
     get(_, prop) {
         if (prop === "apps") {
             return {
                 open: async (path, params) => {
-                    const url = await SWBridge.call("apps.open", path, params)
-                    return window.open(url)
+                    const url = await SWBridge.call("apps.open", path, params);
+try {
+    new URL(url);
+    return window.open(url);
+} catch {
+    console.error("Invalid URL:", url);
+    return null;
+}
                 }
             }
         }
@@ -140,19 +145,24 @@ async function route(request, parts) {
         }
         return createProxy([prop])
     }
-})
+});
 
-    function createProxy(path) {
-        return new Proxy(() => {}, {
-            get(_, prop) {
-                return createProxy([...path, prop])
-            },
-            apply(_, __, args) {
-                return SWBridge.call(path.join("."), ...args)
-            }
-        })
-    }
+    function createProxy(path = []) {
+    const key = path.join('.');
+    if (proxyCache.has(key)) return proxyCache.get(key);
 
+    const p = new Proxy(() => {}, {
+        get(_, prop) {
+            return createProxy([...path, prop]);
+        },
+        apply(_, __, args) {
+            return SWBridge.call(path.join('.'), ...args);
+        }
+    });
+
+    proxyCache.set(key, p);
+    return p;
+}
     window.api = api
 
     fetch(location.href, { headers: { "X-App-Stage": "1" } })
@@ -167,8 +177,25 @@ async function route(request, parts) {
 </head>
 <body></body>
 </html>`
+    const stream = new ReadableStream({
+        start(controller) {
+            const encoder = new TextEncoder()
+            controller.enqueue(encoder.encode(injected))
+            const reader = new Blob([text]).stream().getReader()
+            function push() {
+                reader.read().then(({ done, value }) => {
+                    if (done) controller.close()
+                    else {
+                        controller.enqueue(value)
+                        push()
+                    }
+                })
+            }
+            push()
+        }
+    })
 
-    return new Response(injected, {
+    return new Response(stream, {
         headers: {
             "Content-Type": type,
             "Cross-Origin-Opener-Policy": "same-origin"
@@ -202,7 +229,8 @@ const rpc = {
         exists,
         mkdir,
         mkdirp,
-        remove
+        remove,
+        open: openFile
     },
     system: {
         ensureRoot,
@@ -210,11 +238,10 @@ const rpc = {
         norm
     },
     apps: {
-        
-    async open(path, params = {}) {
-        appParams.set(path, params)
-        return `/apps/${path}`
-    },
+        async open(path, params = {}) {
+            appParams.set(path, params)
+            return `/apps/${path}`
+        },
         getParams(path) {
             return appParams.get(path) || {}
         }
