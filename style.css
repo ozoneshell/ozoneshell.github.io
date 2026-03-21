@@ -78,6 +78,7 @@ body {
     background-color: black;
     padding: 1em;
     border-radius:.5em;
+    height: 0;
   }
 }
 

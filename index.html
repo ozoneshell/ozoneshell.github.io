@@ -13,7 +13,18 @@
     <div class="tui">
         <div class="tuiheader">
             <button onclick="initializeOzone()">Update Everything</button>
-            <button onclick="indexedDB.deleteDatabase('ozoneVFS')">Reset Everything</button>
+            <button id="reset">Reset Everything</button>
+            <script>
+                document.getElementById("reset").onclick = () => {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                        regs.forEach(reg => reg.unregister());
+                    });
+                    const req = indexedDB.deleteDatabase("ozoneVFS");
+                    req.onsuccess = () => console.log("Database deleted");
+                    req.onerror = e => console.error("Delete failed", e.target.error);
+                    req.onblocked = () => console.warn("Delete blocked, close other tabs");
+                };
+            </script>
         </div>
         <div id="logs">
             <div class="log">Welcome to Ozone kernel</div>

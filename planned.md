@@ -23,3 +23,41 @@
 ## App declarations
 - apps can register window type and sizes even per function. (files app can spawn on popup window if its opened as file picker)
 
+
+- apps-file registry
+system dialogs
+    - open file method
+    - "open file with" method
+    - "choose app to open file" screen
+    - "register app as default handler confirmation" durin installation
+- files app methods
+    - save file as method
+    - choose folder method
+    - select files method
+    - select files with type filters
+- manage apps methods
+    - uninstall app
+    - register apps from folder
+    - clone app from URL
+    - clear app data
+- app information methods
+    - get app information by app tag
+        - app name, author, version, icon, permissions
+- app permissions   
+    - clear app permissions method
+    - get app permissions method
+    - set app permissions method
+- desktop file
+    ```json
+    {
+        "name":"shortcut name",
+        "app":"app/tag",
+        "icon":"path/to/your/app/icon.png",
+        "description":"this is a desktop shortcut file.",
+        "type": "application/directory/link"
+    }
+    ```
+    - types
+        - application: triggers open application directly
+        - directory: opens the path in files app
+        - opens the link in your browser

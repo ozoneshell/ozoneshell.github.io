@@ -1,7 +1,3 @@
-// primary loader
-var loader = document.getElementById("textloader");
-var arr = ["Collecting data...", "Compiling application...", "Downloading assets...", "Mounting local data...", "Installing application..."];
-
 var state = {
     defaultApps: ["files", "settings", "text"],
     appRepo: "additionalApps/",
@@ -36,7 +32,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         appURL = new URL(appURL, window.location.href).href
         await packageAppFromURL(appURL);
     }
-    ensureSW()
+    ensureSW();
+    log("Ozone is Ready! If you want to, you can safely close this tab now.")
 })
 
 async function ensureSW() {
@@ -65,11 +62,13 @@ async function ensureSW() {
 }
 
 async function initializeOzone() {
+    log("Downloading defaults... ")
     for (const app of state.defaultApps) {
         const appURL = new URL("defaultSource/" + app, window.location.href).href
         await packageAppFromURL(appURL)
     }
     await copySharedAssets();
+    log("Ready!")
 }
 
 async function copySharedAssets() {
@@ -102,13 +101,13 @@ async function packageAppFromURL(appURL) {
     const sources = data.sources || []
 
 
-        log(`Installing ${data.author}/${data.name}...`)
+    log(`. Installing ${data.author}/${data.name}...`)
 
     await Promise.all(
         sources.map(async file => {
             try {
                 const fileURL = appURL + "/" + file
-                log(` ... ${file}`)
+                log(` .. ${file}`)
                 const r = await fetch(fileURL)
                 if (!r.ok) return
 
@@ -125,7 +124,7 @@ async function packageAppFromURL(appURL) {
         const lr = await fetch(landingURL)
         if (lr.ok) {
             const landingBlob = await lr.blob()
-                log(` ... index.html`)
+            log(` .. index.html`)
             await writeFile(`${base}/index.html`, landingBlob)
         }
     } catch { }
