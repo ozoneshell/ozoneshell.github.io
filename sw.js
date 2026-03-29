@@ -1,4 +1,5 @@
 importScripts("scripts/vfs.js")
+importScripts("scripts/utility.js")
 
 ensureRoot()
 
@@ -275,3 +276,10 @@ self.addEventListener("message", async e => {
         result
     })
 })
+
+
+function openFile(path) {
+    getExtension(path);
+    // get which app opens that type
+    // open app with path as params
+}

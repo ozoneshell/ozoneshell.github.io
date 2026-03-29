@@ -62,13 +62,16 @@ async function exists(path) {
 
 async function mkdir(path) {
     path = norm(path)
+    if (path === "/") throw Error("invalid path")
+
     const db = await dbp
-    const parent = parentOf(path)
     const tx = db.transaction("files", "readwrite")
     const store = tx.objectStore("files")
 
-    if (await reqp(store.get(path))) throw Error("exists")
+    const existing = await reqp(store.get(path))
+    if (existing) throw Error("exists")
 
+    const parent = parentOf(path)
     const p = await reqp(store.get(parent))
     if (!p || p.type !== "folder") throw Error("invalid parent")
 
@@ -89,11 +92,17 @@ async function mkdirp(path) {
 
     for (const p of parts) {
         cur += "/" + p
-        const v = await reqp(store.get(cur))
-        if (!v) {
-            const parent = parentOf(cur)
-            store.put({ path: cur, type: "folder", parent, meta: {} })
+        let folder = await reqp(store.get(cur))
+        if (folder) {
+            if (folder.type !== "folder") throw Error("exists") 
+            continue
         }
+
+        const parent = parentOf(cur)
+        const parentFolder = await reqp(store.get(parent))
+        if (!parentFolder || parentFolder.type !== "folder") throw Error("invalid parent")
+
+        store.put({ path: cur, type: "folder", parent, meta: {} })
     }
 
     await txdone(tx)

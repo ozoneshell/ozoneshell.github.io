@@ -1,0 +1,2 @@
+- settings api
+- store app file association.

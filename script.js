@@ -145,9 +145,3 @@ function log(text) {
     x.innerText = text;
     document.getElementById("logs").appendChild(x)
 }
-
-function openFile(path) {
-    // get type from file
-    // get which app opens that type
-    // open app with path as params
-}
