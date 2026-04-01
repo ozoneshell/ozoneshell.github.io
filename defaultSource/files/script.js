@@ -161,7 +161,7 @@ class FileItem {
 
     open() {
         if (this.item.type === "folder") renderFiles(this.item.path)
-        else api.apps.open(this.item.path)
+        else api.files.open(this.item.path)
     }
 }
 

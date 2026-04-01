@@ -71,3 +71,11 @@ var settings = {
         await writeJSON(file, data)
     }
 }
+
+async function openFile(path) {
+    const fileExt = getExtension(path);
+    let appTag = (await settings.get("FileBindings"))[fileExt][0];
+    if (appTag) {
+        openFromSW(appTag, {"file": path})
+    }
+}

@@ -102,6 +102,23 @@ async function packageAppFromURL(appURL) {
 
 
     log(`. Installing ${data.author}/${data.name}...`)
+    console.log(data.capabilities)
+
+    if (data.capabilities) {
+        const FileBindings = (await settings.get("FileBindings")) ?? {}
+        const key = `${data.author}/${data.name}`
+
+        for (const ext of data.capabilities) {
+            FileBindings[ext] = [
+                ...new Set([
+                    ...(FileBindings[ext] ?? []),
+                    key
+                ])
+            ]
+        }
+
+        settings.set("FileBindings", FileBindings)
+    }
 
     await Promise.all(
         sources.map(async file => {

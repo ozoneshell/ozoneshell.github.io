@@ -1,6 +1,6 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const path = "/system/ozone/Settings/manifest.json";
+    const path = (await api.params)?.file || "";
     const textarea = document.getElementById("main_input");
 
     async function loadFile() {

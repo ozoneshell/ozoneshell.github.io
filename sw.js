@@ -110,15 +110,29 @@ async function route(request, parts) {
         }
 
         static init(){
-            navigator.serviceWorker.addEventListener("message",e=>{
-                const d = e.data
-                if(d?.type!=="rpc-res") return
-                const fn = this.#wait.get(d.id)
-                if(fn){
-                    this.#wait.delete(d.id)
-                    fn(d.result)
-                }
-            })
+           navigator.serviceWorker.addEventListener("message", e => {
+    const d = e.data
+
+    if (d?.type === "rpc-res") {
+        const fn = SWBridge.#wait.get(d.id)
+        if (fn) {
+            SWBridge.#wait.delete(d.id)
+            fn(d.result)
+        }
+        return
+    }
+
+    if (d?.type === "from-sw") {
+        if (d.action === "apps.open") {
+            try {
+                new URL(d.url, location.origin)
+                window.open(d.url, "_blank", "noopener,noreferrer")
+            } catch {
+                console.error("Invalid URL from SW:", d.url)
+            }
+        }
+    }
+})
         }
     }
 
@@ -244,7 +258,7 @@ const rpc = {
             return `/apps/${path}`
         },
         getParams(path) {
-            return appParams.get(path) || {}
+            return appParams.get(path.replace(/\/$/, "")) || {}
         }
     }
 }
@@ -277,9 +291,22 @@ self.addEventListener("message", async e => {
     })
 })
 
+async function openFromSW(path, params = {}) {
+    appParams.set(path, params)
+    const url = `/apps/${path}`
 
-function openFile(path) {
-    getExtension(path);
-    // get which app opens that type
-    // open app with path as params
+    const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+    })
+
+    for (const client of clientsList) {
+        client.postMessage({
+            type: "from-sw",
+            action: "apps.open",
+            url
+        })
+    }
+
+    return url
 }
