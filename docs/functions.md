@@ -18,3 +18,16 @@ script.js
 utility.js
 - mime from path: mimeFromPath(path)
 - get file name extension: getExtension(text)
+- settings path helper: resolvePath
+- read settings JSON: readJSON(path)
+- write settings JSON: writeJSON(path, data)
+- settings
+-- set(key, value, path)
+-- get(key, path)
+-- rem(key, path)
+
+sw.js
+- self fetch listener
+- ozone page generator and router: route(request, parts)
+- self message listener
+- open apps from SW: openFromSW(path, params)

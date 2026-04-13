@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyDE</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="main_container">
+        <img src="https://cdn.vectorstock.com/i/500p/36/77/abstract-gradient-black-background-vector-24523677.jpg"
+            id="wallpaper">
+
+        <div class="topbar">
+            <div class="grp">
+                <b class="topbar_item">TinyDE</b>
+                <button class="topbar_item" popovertarget="startDialog">Start</button>
+                <a class="topbar_item">Info</a>
+            </div>
+
+            <div class="grp">
+                <a class="topbar_item">Restart</a>
+                <a class="topbar_item">Close All</a>
+                <a class="topbar_item">Panic</a>
+            </div>
+        </div>
+
+        <div id="startDialog" popover>
+            <div id="applist">
+                <div class="app_shortcut">Files</div>
+            </div>
+        </div>
+        <div id="workstation">
+        </div>
+    </div>
+    <script src="../scripts/utility.js"></script>
+    <script src="../scripts/vfs.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

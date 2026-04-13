@@ -1,0 +1,184 @@
+body,
+html {
+    height: 100%;
+    margin: 0;
+    background-color: #1f1f1f;
+    color: white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.main_container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+
+    &>* {
+        z-index: 1;
+    }
+}
+
+.topbar {
+    background-color: black;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.grp {
+    display: inherit;
+
+    &>* {
+        opacity: .8;
+        cursor: pointer;
+        padding: .5em;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+button {
+    all: unset;
+}
+
+#startDialog {
+    margin-top: 36px;
+    margin-left: 62px;
+    width: 300px;
+    max-height: 500px;
+    border: 0;
+    background: black;
+    border-radius: 0 0 1em 1em;
+    color: inherit;
+    padding: 0;
+    padding-bottom: .5em;
+}
+
+#applist {
+    display: flex;
+    flex-direction: column;
+
+    &>.app_shortcut {
+        cursor: pointer;
+        padding: .5em 1em;
+
+        &:hover {
+            background-color: #101010;
+        }
+    }
+}
+
+.window {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 3em;
+    left: 3em;
+    width: 800px;
+    height: 533px;
+    background-color: black;
+    border-radius: .5em;
+    overflow: hidden;
+    outline: 2px solid black;
+    user-select: none;
+
+    &>.topbar {
+        cursor: grab;
+
+        &:active {
+            cursor: grabbing;
+        }
+    }
+
+    &>iframe {
+        flex: 1;
+        border-radius: .5em;
+    }
+}
+
+#wallpaper {
+    z-index: 0;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#workstation {
+    flex: 1;
+    position: relative;
+}
+
+.resize-handle {
+    position: absolute;
+    z-index: 5;
+}
+
+.n,
+.s {
+    left: 0;
+    width: 100%;
+    height: 6px;
+}
+
+.e,
+.w {
+    top: 0;
+    width: 6px;
+    height: 100%;
+}
+
+.n {
+    top: -3px;
+    cursor: n-resize;
+}
+
+.s {
+    bottom: -3px;
+    cursor: s-resize;
+}
+
+.e {
+    right: -3px;
+    cursor: e-resize;
+}
+
+.w {
+    left: -3px;
+    cursor: w-resize;
+}
+
+.ne,
+.nw,
+.se,
+.sw {
+    width: 10px;
+    height: 10px;
+}
+
+.ne {
+    top: -3px;
+    right: -3px;
+    cursor: ne-resize;
+}
+
+.nw {
+    top: -3px;
+    left: -3px;
+    cursor: nw-resize;
+}
+
+.se {
+    bottom: -3px;
+    right: -3px;
+    cursor: se-resize;
+}
+
+.sw {
+    bottom: -3px;
+    left: -3px;
+    cursor: sw-resize;
+}
