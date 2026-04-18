@@ -30,12 +30,12 @@ async function route(request, parts) {
         vfsPath = `/system/sharedAssets/${file}`
     } else {
         const file = rest.join("/") || "index.html"
-        vfsPath = `/system/${creator}/${app}/${file}`
+        vfsPath = `/system/apps/${creator}/${app}/${file}`
     }
 
-    if (!/^\/system\/(sharedAssets|[^/]+\/[^/]+)\//.test(vfsPath)) {
+    if (!/^\/system\/(sharedAssets|apps\/[^/]+\/[^/]+)\//.test(vfsPath))
         return new Response("Forbidden", { status: 403 })
-    }
+
 
     const f = await readFile(vfsPath)
     if (!f || f.type !== "file")
@@ -260,7 +260,8 @@ const rpc = {
         getParams(path) {
             return appParams.get(path.replace(/\/$/, "")) || {}
         }
-    }
+    },
+    settings
 }
 
 self.addEventListener("message", async e => {
@@ -310,3 +311,11 @@ async function openFromSW(path, params = {}) {
 
     return url
 }
+
+self.addEventListener("install", () => {
+  self.skipWaiting()
+})
+
+self.addEventListener("activate", e => {
+  e.waitUntil(clients.claim())
+})

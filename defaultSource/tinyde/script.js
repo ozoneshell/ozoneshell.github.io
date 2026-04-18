@@ -1,12 +1,33 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const items = await list("system/ozone")
+    const items = await api.settings.get("all", "TagPathIndex.json")
     const appList = document.getElementById("applist")
 
-    appList.innerHTML = items.map(item => {
-        const name = item.path.split("/").pop()
-        return `<div class="app_shortcut">${name}</div>`
-    }).join("")
+    const shortcuts = await Promise.all(
+        Object.entries(items).map(async ([tag, path]) => {
+            if (tag === "darkdot/TinyDE") return ""
+
+            const name = path.split("/").pop()
+
+            return `
+            <div class="app_shortcut" data-tag="${tag}" onclick="openApp(this)">
+                ${name}
+            </div>
+        `
+        })
+    )
+
+    appList.innerHTML = shortcuts.join("")
 })
+function openApp(el) {
+    const tag = el.dataset.tag
+    const [author, appName] = tag.split("/")
+
+    new AppWindow({
+        appName,
+        appId: `${author}-${appName}`.toLowerCase(),
+        url: `http://127.0.0.1:5500/apps/${author}/${appName}`
+    })
+}
 
 class Resizer {
     constructor(win) {
@@ -240,9 +261,3 @@ class AppWindow {
         }
     }
 }
-
-new AppWindow({
-    appName: "Settings",
-    appId: "settings",
-    url: "http://127.0.0.1:5500/apps/ozone/Settings"
-})

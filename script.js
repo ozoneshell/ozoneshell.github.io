@@ -1,5 +1,5 @@
 var state = {
-    defaultApps: ["files", "settings", "text"],
+    defaultApps: ["files", "settings", "text", "tinyde"],
     appRepo: "additionalApps/",
     "mimedb": {}
 }
@@ -97,12 +97,14 @@ async function packageAppFromURL(appURL) {
     if (!res.ok) throw Error("Failed to fetch " + manifestURL)
 
     const data = await res.json()
-    const base = `/system/${data.author}/${data.name}`
+    const base = `/system/apps/${data.author}/${data.name}`
     const sources = data.sources || []
 
 
     log(`. Installing ${data.author}/${data.name}...`)
     console.log(data.capabilities)
+
+    await settings.set(`${data.author}/${data.name}`, base, "TagPathIndex.json")
 
     if (data.capabilities) {
         const FileBindings = (await settings.get("FileBindings")) ?? {}
@@ -161,4 +163,20 @@ function log(text) {
     x.className = "log";
     x.innerText = text;
     document.getElementById("logs").appendChild(x)
+}
+
+async function eraseExistance() {
+    const regs = await navigator.serviceWorker.getRegistrations()
+
+    await Promise.all(regs.map(r => r.unregister()))
+
+    const clients = await navigator.serviceWorker.getRegistrations()
+    console.log(clients)
+
+    setTimeout(() => {
+        const req = indexedDB.deleteDatabase("ozoneVFS")
+        req.onsuccess = () => console.log("deleted")
+        req.onerror = () => console.log(req.error)
+        req.onblocked = () => console.log("still blocked")
+    }, 1000)
 }

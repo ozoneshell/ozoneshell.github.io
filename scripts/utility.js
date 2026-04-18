@@ -62,7 +62,7 @@ var settings = {
     get: async function (key, path) {
         var file = resolvePath(path)
         var data = await readJSON(file)
-        return data[key]
+        return (key == "all") ? data : data[key];
     },
     rem: async function (key, path) {
         var file = resolvePath(path)

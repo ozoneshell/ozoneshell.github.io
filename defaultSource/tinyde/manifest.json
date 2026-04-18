@@ -1,0 +1,20 @@
+{
+    "name": "TinyDE",
+    "author": "darkdot",
+    "description": "Offical Desktop Environment for Ozone Shell",
+    "permissions": [
+        "files",
+        "get_events",
+        "get_alerts",
+        "send_alerts",
+        "set_settings",
+        "get_settings"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1",
+    "handle": "desktop_environment"
+}

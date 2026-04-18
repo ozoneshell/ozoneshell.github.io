@@ -176,7 +176,7 @@ body {
 
 .setting_button {
     background-color: rgb(var(--highlight));
-    color: rgb(var(--highlighttext));
+    color: rgb(var(--highdark));
     padding: .7em 1.1em;
     font: inherit;
     font-size: .9em;

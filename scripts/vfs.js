@@ -24,32 +24,46 @@ const parentOf = p => {
     const r = s.join("/")
     return r || "/"
 }
-
 const dbp = new Promise((res, rej) => {
     const req = indexedDB.open("ozoneVFS", 1)
+
+    req.onblocked = () => console.log("blocked")
+
     req.onupgradeneeded = e => {
         const db = e.target.result
         const store = db.createObjectStore("files", { keyPath: "path" })
         store.createIndex("parent", "parent")
     }
-    req.onsuccess = e => res(e.target.result)
-    req.onerror = e => rej(e.target.error)
-})
 
+    req.onsuccess = e => {
+        const db = e.target.result
+        db.onversionchange = () => db.close()
+        res(db)
+    }
+
+    req.onerror = () => rej(req.error)
+})
 async function ensureRoot() {
     const db = await dbp
     const tx = db.transaction("files", "readwrite")
     const store = tx.objectStore("files")
-    const root = await reqp(store.get("/"))
-    let existed = true
-    if (!root) {
-        store.put({ path: "/", type: "folder", parent: null, meta: {} })
-        existed = false
-    }
-    await txdone(tx)
-    return existed
-}
 
+    const root = await reqp(store.get("/"))
+
+    if (!root) {
+        await reqp(
+            store.put({
+                path: "/",
+                type: "folder",
+                parent: null,
+                meta: {}
+            })
+        )
+    }
+
+    await txdone(tx)
+    return !!root
+}
 async function exists(path) {
     path = norm(path)
     const db = await dbp
