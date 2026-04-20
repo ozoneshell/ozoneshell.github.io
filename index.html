@@ -1,39 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ozone Kernel</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="assets/logo-tiny.png" rel="icon">
+    <title>Ozone Shell</title>
+    <link href="style.css" rel="stylesheet"> 
 </head>
-
 <body>
-    <div class="tui">
-        <div class="tuiheader">
-            <button onclick="initializeOzone()">Update Everything</button>
-            <button id="reset">Reset Everything</button>
-            <script>
-                document.getElementById("reset").onclick = () => {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                        regs.forEach(reg => reg.unregister());
-                    });
-                    const req = indexedDB.deleteDatabase("ozoneVFS");
-                    req.onsuccess = () => console.log("Database deleted");
-                    req.onerror = e => console.error("Delete failed", e.target.error);
-                    req.onblocked = () => console.warn("Delete blocked, close other tabs");
-                };
-            </script>
+    <div class="nav">
+        <div class="logo">
+            <img src="assets/logo-tiny.png" alt="">
+            Ozone Shell
         </div>
-        <div id="logs">
-            <div class="log">Welcome to Ozone kernel</div>
+        <div class="menu">
+            <a href="">Platforms</a>
+            <a href="">TinyDE</a>
+            <a href="">Docs</a>
+            <a href="" class="target_action">Start</a>
         </div>
-        <input type="text" id="prompt" placeholder="___">
+    </div>
+    <div class="header_section">
+        <h1>Make Clean, Native-Like <br>Experiences Within The Web</h1>
+        <p>Create powerful applications with an added unified runtime layer.</p>
+        <button>
+            Get Creative
+            <span class="icon">arrow_forward</span>
+        </button>
+    </div>
+    <div class="page">
+        <p class="key_phrase">Ozone Shell is a runtime layer, unifying functionality over apps and delivering your webapp to the user - from the browser itself.</p>
+    </div>
+    <div class="page">
+        <div class="card">
+            <div class="data_side">
+                <div class="label">Ozone apps are web apps</div>
+                <h1>Local-first web applications make sense with ozone</h1>
+                <p>Achieve cross-platform functionality and all the other benefits that the web gives, while having native-like integration and coordination just by having a unfied runtime. <u>Users already have computers, why not use them?</u></p>
+            </div>
+            <div class="art_side">
+                <img src="https://img.freepik.com/free-vector/flat-safer-internet-day-illustration_23-2151163141.jpg?semt=ais_hybrid&w=740&q=80">
+            </div>
+        </div>
+        <div class="card">
+            <div class="data_side">
+                <div class="label">Zero Compilation Step</div>
+                <h1>APIs, distribution and <br>more, directly from source</h1>
+                <p>Ozone Shell serves app content directly from the source of your application, on demand. This makes open source development easier and optimal by removing the compilation step.</p>
+            </div>
+            <div class="art_side">
+                <img src="https://img.freepik.com/free-vector/flat-safer-internet-day-illustration_23-2151163141.jpg?semt=ais_hybrid&w=740&q=80">
+            </div>
+        </div>
+        <div class="card">
+            <div class="data_side">
+                <div class="label">Ozone makes web desktops easier</div>
+                <h1>VFS, Permissions And <br>A Unified IPC built-in</h1>
+                <p>Web Desktops are complicated applications reasembling traditional desktop environment software. In Ozone, desktop environments can be privileged applications which displays other applications, or act as a launcher for them.</p>
+            </div>
+            <div class="art_side">
+                <img src="https://img.freepik.com/free-vector/flat-safer-internet-day-illustration_23-2151163141.jpg?semt=ais_hybrid&w=740&q=80">
+            </div>
+        </div>
     </div>
     <script src="script.js"></script>
-    <script src="scripts/utility.js"></script>
-    <script src="scripts/vfs.js"></script>
 </body>
-
 </html>
