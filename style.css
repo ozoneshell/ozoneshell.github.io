@@ -51,6 +51,39 @@ h1,
     text-transform: capitalize;
 }
 
+.logo {
+    padding: 1em;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: .3em;
+
+    &>img {
+        width: 2em;
+    }
+}
+
+a {
+    font-size: 1em;
+    color: rgb(var(--text));
+    padding: .8em 1.5em;
+    border-radius: 2em;
+    text-decoration: none;
+
+    &.target_action {
+        background-color: rgb(var(--highone));
+
+        &:hover {
+            background-color: rgb(var(--highone));
+            filter: brightness(80%);
+        }
+    }
+
+    &:hover {
+        background-color: rgb(var(--two));
+    }
+}
+
 .nav {
     display: flex;
     flex-direction: row;
@@ -59,44 +92,11 @@ h1,
     padding: 0 1em;
     position: sticky;
 
-    &>.logo {
-        padding: 1em;
-        font-size: 1.5em;
-        display: flex;
-        align-items: center;
-        gap: .3em;
-
-        &>img {
-            width: 2em;
-        }
-    }
-
     &>.menu {
         display: flex;
         gap: .5em;
         align-items: center;
         padding: 1em;
-
-        &>a {
-            font-size: 1em;
-            color: rgb(var(--text));
-            padding: .8em 1.5em;
-            border-radius: 2em;
-            text-decoration: none;
-
-            &.target_action {
-                background-color: rgb(var(--highone));
-
-                &:hover {
-                    background-color: rgb(var(--highone));
-                    filter: brightness(80%);
-                }
-            }
-
-            &:hover {
-                background-color: rgb(var(--two));
-            }
-        }
     }
 }
 
@@ -155,8 +155,8 @@ h1,
     max-height: 15em;
     overflow: hidden;
     max-width: 1200px;
-    margin: auto;
-    margin-bottom: 2em;
+    margin: 8em auto;
+    align-items: center;
 
     &>.data_side {
         width: 100%;
@@ -183,5 +183,32 @@ h1,
 
     &:nth-child(odd) {
         flex-direction: row-reverse;
+    }
+}
+
+.card.footer {
+    margin: 0 auto;
+    position: relative;
+}
+
+.gallery {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: auto;
+    align-items: stretch;
+
+    &>.vertcard {
+        display: flex;
+        flex-direction: column;
+        width: 16em;
+        border-radius: 1em;
+        overflow: hidden;
+        background-color: rgb(var(--two));
+
+        &>.data {
+            padding: 1em;
+            font-weight: normal;
+        }
     }
 }
