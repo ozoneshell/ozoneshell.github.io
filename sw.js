@@ -245,6 +245,9 @@ const rpc = {
         remove,
         open: openFile
     },
+    utility: {
+        getMime: mime
+    },
     system: {
         ensureRoot,
         parentOf,

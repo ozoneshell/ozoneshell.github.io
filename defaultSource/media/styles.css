@@ -23,7 +23,7 @@ body {
     color: rgb(var(--text));
     font-family: "Google Sans",
         sans-serif;
-        height: 100vh;
+    height: 100vh;
 }
 
 .flex {
@@ -100,13 +100,13 @@ body {
     }
 }
 
-embed {
-    padding: 1em;
+video {
     font-size: 1em;
     font-family: 'Courier New', Courier, monospace;
-    background-color: rgb(var(--two));
+    background-color: black;
     outline: 0;
     color: rgb(var(--text));
     border: 0;
     border-radius: .5em;
+    height: calc(100vh - 3.3em);
 }
