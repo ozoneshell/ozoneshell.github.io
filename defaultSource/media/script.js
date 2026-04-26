@@ -1,27 +1,18 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
     const path = (await api.params)?.file || "";
-    const textarea = document.getElementById("main_input");
+    const textarea = document.getElementById("main_media_element");
 
     async function loadFile() {
         const file = await api.files.read(path);
         if (!file) {
-            textarea.value = "";
+            textarea.src = "";
             return;
         }
+        
+        let text = file.data;
 
-        let text;
-        if (file.data instanceof Blob) {
-            text = await file.data.text();
-        } else {
-            text = file.data;
-        }
-
-        textarea.value = text;
-    }
-    async function saveFile() {
-        const data = textarea.value;
-        await api.files.write(path, data);
+        textarea.src = text;
     }
 
     loadFile();

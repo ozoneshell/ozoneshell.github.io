@@ -104,10 +104,10 @@ var fileTypeIcons = {
     "webp": "image",
     "jpg": "image",
     "mp3": "music",
-    "mp4": "video",
-    "mpeg": "video",
-    "webm": "video",
-    "mkv": "video"
+    "mp4": "video_file",
+    "mpeg": "video_file",
+    "webm": "video_file",
+    "mkv": "video_file"
 }
 
 function getExtension(name) {
@@ -174,4 +174,38 @@ async function renderFiles(path) {
     for (const item of items) {
         new FileItem(item, container)
     }
+    openTopBarPage("folder");
+}
+const input = document.getElementById("filePicker")
+
+function importFiles() {
+    input.click()
+}
+input.addEventListener("change", async e => {
+    for (const file of e.target.files) {
+        const content = await file.arrayBuffer()
+        await api.files.write(`downloads/${file.name}`, content)
+    }
+})
+
+document.addEventListener("click", e => {
+    const el = e.target.closest(".menu_action")
+    if (!el) return
+    const fn = actionMap[el.dataset.action]
+    if (fn) fn(el)
+})
+
+const actionMap = {
+    go_parent: () => navigateToParent(),
+    rename_folder: () => renameFolder(),
+    delete_folder: () => deleteFolder(),
+
+    open_file: () => openFile(),
+    open_with: () => openWith(),
+    export_file: () => exportFile(),
+    rename_file: () => renameFile(),
+    delete_file: () => deleteFile(),
+
+    import_file: () => importFiles(),
+    import_folder: () => importFolder()
 }

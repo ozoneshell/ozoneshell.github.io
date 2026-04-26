@@ -183,9 +183,7 @@ try {
     fetch(location.href, { headers: { "X-App-Stage": "1" } })
         .then(r => r.text())
         .then(html => {
-            document.open()
-            document.write(html)
-            document.close()
+         document.body.innerHTML = html
         })
 })()
 </script>

@@ -1,0 +1,112 @@
+:root {
+    --one: 25, 25, 26;
+    --two: 35, 36, 37;
+    --three: 47, 49, 49;
+    --four: 60, 60, 60;
+    --five: 140, 143, 141;
+
+    --highone: 4, 76, 117;
+    --highlight: 165, 195, 249;
+    --highlighttext: 15, 50, 110;
+
+    --highdark: 15, 50, 110;
+    --hightext: 191, 229, 254;
+
+    --text: 240, 240, 240;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: rgb(var(--one));
+    color: rgb(var(--text));
+    font-family: "Google Sans",
+        sans-serif;
+        height: 100vh;
+}
+
+.flex {
+    display: flex;
+
+    &.y {
+        flex-direction: column;
+    }
+
+    &.x {
+        flex-direction: row;
+    }
+
+    &>.fill {
+        flex: 1;
+    }
+
+    &>.fit {
+        width: fit-content;
+    }
+}
+
+.sidebar {
+    background-color: rgb(var(--two));
+    height: calc(100vh - 1em);
+    padding: .5em;
+    min-width: 290px;
+    border-right: 1px solid rgb(var(--three));
+
+}
+
+@font-face {
+    font-family: 'Material Symbols Rounded';
+    font-style: normal;
+    src: url("sharedAssets/icons.woff2") format('woff2');
+}
+
+@font-face {
+    font-family: "Google Sans";
+    font-style: normal;
+    src: url("sharedAssets/google_sans.ttf") format('truetype');
+}
+
+.icon {
+    font-family: 'Material Symbols Rounded';
+    font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+}
+
+.main_container {
+    gap: .3em;
+    margin: .3em;
+}
+
+.menu_bar {
+    border-left: none;
+    gap: .3em;
+
+    &>.page {
+        padding: .5em;
+        gap: .5em;
+    }
+
+    & .menu_action {
+        padding: .5em .8em;
+        display: flex;
+        flex-direction: row;
+        background-color: rgb(var(--two));
+        gap: .5em;
+        border-radius: .5em;
+    }
+}
+
+embed {
+    padding: 1em;
+    font-size: 1em;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: rgb(var(--two));
+    outline: 0;
+    color: rgb(var(--text));
+    border: 0;
+    border-radius: .5em;
+}

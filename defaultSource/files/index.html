@@ -25,46 +25,60 @@
                     <div class="menu_button" data-openbarpage="view">
                         <span>View</span>
                     </div>
+                    <div class="menu_button" data-openbarpage="import">
+                        <span>Import</span>
+                    </div>
                     <div class="menu_button" data-openbarpage="zip">
                         <span>Zip</span>
                     </div>
                 </div>
                 <div class="menu_bar flex x">
                     <div class="page flex x" data-barpageid="folder">
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="go_parent">
                             <div class="icon">arrow_upward</div>
                             <span>Parent</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="rename_folder">
                             <div class="icon">move_item</div>
                             <span>Rename</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="delete_folder">
                             <div class="icon">delete</div>
                             <span>Delete</span>
                         </div>
                     </div>
-                    <div class="page flex x" data-barpageid="file">
 
-                        <div class="menu_action">
+                    <div class="page flex x" data-barpageid="file">
+                        <div class="menu_action" data-action="open_file">
                             <div class="icon">rocket_launch</div>
                             <span>Open</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="open_with">
                             <div class="icon">open_in_new</div>
                             <span>Open with</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="export_file">
                             <div class="icon">download</div>
                             <span>Export</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="rename_file">
                             <div class="icon">move_item</div>
                             <span>Rename</span>
                         </div>
-                        <div class="menu_action">
+                        <div class="menu_action" data-action="delete_file">
                             <div class="icon">delete</div>
                             <span>Delete</span>
+                        </div>
+                    </div>
+
+                    <div class="page flex x" data-barpageid="import">
+                        <div class="menu_action" data-action="import_file">
+                            <div class="icon">select_all</div>
+                            <span>Import files</span>
+                        </div>
+                        <div class="menu_action" data-action="import_folder">
+                            <div class="icon">select</div>
+                            <span>Import folder</span>
                         </div>
                     </div>
                 </div>
@@ -96,6 +110,7 @@
             </div>
         </div>
     </div>
+    <input type="file" id="filePicker" multiple hidden>
     <script src="script.js"></script>
 </body>
 

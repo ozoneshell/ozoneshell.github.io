@@ -1,0 +1,16 @@
+{
+    "name": "Media",
+    "author": "ozone",
+    "description": "An app to play media files.",
+    "permissions": [
+        "files"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1",
+    "handle": "media_player",
+    "capabilities": ["mp4", "mpeg", "jpeg", "png", "svg", "mkv", "mp3", "webm", "flac", "opus", "midi"]
+}
