@@ -46,7 +46,7 @@ async function route(request, parts) {
     if (type !== "text/html") {
         const stream = new ReadableStream({
             start(controller) {
-                const chunk = f.data instanceof Blob ? f.data : new Blob([f.data])
+                const chunk = new Blob([f.data])
                 const reader = chunk.stream().getReader()
                 function push() {
                     reader.read().then(({ done, value }) => {
@@ -68,7 +68,7 @@ async function route(request, parts) {
         })
     }
 
-    const text = f.data instanceof Blob ? await f.data.text() : String(f.data)
+    const text = new TextDecoder().decode(f.data)
     const isStage = request.headers.get("X-App-Stage") === "1"
 
     if (isStage) {
@@ -194,17 +194,9 @@ try {
         start(controller) {
             const encoder = new TextEncoder()
             controller.enqueue(encoder.encode(injected))
-            const reader = new Blob([text]).stream().getReader()
-            function push() {
-                reader.read().then(({ done, value }) => {
-                    if (done) controller.close()
-                    else {
-                        controller.enqueue(value)
-                        push()
-                    }
-                })
-            }
-            push()
+
+            controller.enqueue(encoder.encode(text))
+            controller.close()
         }
     })
 
@@ -230,6 +222,11 @@ function mime(p) {
         svg: "image/svg+xml",
         woff2: "font/woff2",
         ttf: "font/ttf",
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
         txt: "text/plain"
     }[ext] || "application/octet-stream"
 }
@@ -314,9 +311,9 @@ async function openFromSW(path, params = {}) {
 }
 
 self.addEventListener("install", () => {
-  self.skipWaiting()
+    self.skipWaiting()
 })
 
 self.addEventListener("activate", e => {
-  e.waitUntil(clients.claim())
+    e.waitUntil(clients.claim())
 })

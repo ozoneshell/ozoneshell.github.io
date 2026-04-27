@@ -37,19 +37,22 @@ function resolvePath(path) {
 }
 
 async function readJSON(path) {
-    path = resolvePath(path)
-    if (!(await exists(path))) return {}
-    var file = await readFile(path)
-    return JSON.parse(file.data || "{}")
+  path = resolvePath(path)
+  if (!(await exists(path))) return {}
+  const file = await readFile(path)
+  if (!file?.data) return {}
+  const text = new TextDecoder().decode(file.data)
+  return JSON.parse(text || "{}")
 }
-
 async function writeJSON(path, data) {
-    path = resolvePath(path)
-    var parts = path.split("/")
-    parts.pop()
-    var dir = parts.join("/")
-    if (!(await exists(dir))) await mkdirp(dir)
-    await writeFile(path, JSON.stringify(data, null, 2))
+  path = norm(path)
+  const dirPath = parentOf(path)
+
+  if (dirPath) {
+    await mkdirp(dirPath)
+  }
+
+  await writeFile(path, JSON.stringify(data, null, 2))
 }
 
 var settings = {

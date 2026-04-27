@@ -1,29 +1,38 @@
-
 document.addEventListener("DOMContentLoaded", async () => {
-    const path = (await api.params)?.file || "";
-    const player = document.getElementById("main_media_element");
+    const path = ((await api.params)?.file) || "";
 
     async function loadFile() {
         const file = await api.files.read(path);
-        console.log(file)
+
         if (!file) {
-            player.src = "";
+            // player.src = "";
             return;
         }
 
-        let buffer = file.data;
-        let mime = await api.utility.getMime(file.path);
+        const bytes = file.data instanceof Uint8Array
+            ? file.data
+            : new Uint8Array(file.data);
 
-        let blob = new Blob([buffer], { type: mime });
-        let url = URL.createObjectURL(blob);
+        const mime = await api.utility.getMime(file.path);
 
-        console.log(file, url, blob, mime)
+        const blob = new Blob([bytes], { type: mime });
+        const url = URL.createObjectURL(blob);
+
+        const player = document.getElementById("main_media_element");
+        if (player._url) {
+            URL.revokeObjectURL(player._url);
+        }
+
+        player._url = url;
+
         player.src = url;
-        player.type = mime;
+        player.load();
+        console.log(player)
     }
 
-    loadFile();
+    await loadFile();
+
     document.getElementById("openFileBtn").addEventListener("click", () => {
-        api.apps.open("ozone/Files", { type: 'file_selector' })
-    })
-})
+        api.apps.open("ozone/Files", { type: "file_selector" });
+    });
+});
