@@ -25,6 +25,7 @@ async function route(request, parts) {
     const [creator, app, ...rest] = parts
 
     let vfsPath
+
     if (rest[0] === "sharedAssets") {
         const file = rest.slice(1).join("/") || "index.html"
         vfsPath = `/system/sharedAssets/${file}`
@@ -33,34 +34,20 @@ async function route(request, parts) {
         vfsPath = `/system/apps/${creator}/${app}/${file}`
     }
 
-    if (!/^\/system\/(sharedAssets|apps\/[^/]+\/[^/]+)\//.test(vfsPath))
+    if (!/^\/system\/(sharedAssets|apps\/[^/]+\/[^/]+)\//.test(vfsPath)) {
         return new Response("Forbidden", { status: 403 })
-
+    }
 
     const f = await readFile(vfsPath)
-    if (!f || f.type !== "file")
+
+    if (!f || f.type !== "file") {
         return new Response("Not found", { status: 404 })
+    }
 
     const type = mime(vfsPath)
 
     if (type !== "text/html") {
-        const stream = new ReadableStream({
-            start(controller) {
-                const chunk = new Blob([f.data])
-                const reader = chunk.stream().getReader()
-                function push() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) controller.close()
-                        else {
-                            controller.enqueue(value)
-                            push()
-                        }
-                    })
-                }
-                push()
-            }
-        })
-        return new Response(stream, {
+        return new Response(f.data, {
             headers: {
                 "Content-Type": type,
                 "Cross-Origin-Opener-Policy": "same-origin"
@@ -69,19 +56,10 @@ async function route(request, parts) {
     }
 
     const text = new TextDecoder().decode(f.data)
-    const isStage = request.headers.get("X-App-Stage") === "1"
 
-    if (isStage) {
-        return new Response(text, { headers: { "Content-Type": type } })
-    }
-
-
-    const injected = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
+    const injectedScript = `
 <script>
-;(() => {
+(() => {
     if (window.opener) {
         try { window.opener = null } catch {}
     }
@@ -96,12 +74,13 @@ async function route(request, parts) {
         static #id = 0
         static #wait = new Map()
 
-        static call(method,...args){
-            return new Promise(res=>{
+        static call(method, ...args) {
+            return new Promise(res => {
                 const id = ++this.#id
-                this.#wait.set(id,res)
+                this.#wait.set(id, res)
+
                 navigator.serviceWorker.controller?.postMessage({
-                    type:"rpc",
+                    type: "rpc",
                     id,
                     method,
                     args
@@ -109,100 +88,90 @@ async function route(request, parts) {
             })
         }
 
-        static init(){
-           navigator.serviceWorker.addEventListener("message", e => {
-    const d = e.data
+        static init() {
+            navigator.serviceWorker.addEventListener("message", e => {
+                const d = e.data
 
-    if (d?.type === "rpc-res") {
-        const fn = SWBridge.#wait.get(d.id)
-        if (fn) {
-            SWBridge.#wait.delete(d.id)
-            fn(d.result)
-        }
-        return
-    }
+                if (d?.type === "rpc-res") {
+                    const fn = SWBridge.#wait.get(d.id)
+                    if (fn) {
+                        SWBridge.#wait.delete(d.id)
+                        fn(d.result)
+                    }
+                    return
+                }
 
-    if (d?.type === "from-sw") {
-        if (d.action === "apps.open") {
-            try {
-                new URL(d.url, location.origin)
-                window.open(d.url, "_blank", "noopener,noreferrer")
-            } catch {
-                console.error("Invalid URL from SW:", d.url)
-            }
-        }
-    }
-})
+                if (d?.type === "from-sw") {
+                    if (d.action === "apps.open") {
+                        try {
+                            new URL(d.url, location.origin)
+                            window.open(d.url, "_blank", "noopener,noreferrer")
+                        } catch {
+                            console.error("Invalid URL from SW:", d.url)
+                        }
+                    }
+                }
+            })
         }
     }
 
     SWBridge.init()
-    const proxyCache = new Map();
 
- const api = new Proxy({}, {
-    get(_, prop) {
-        if (prop === "apps") {
-            return {
-                open: async (path, params) => {
-                    const url = await SWBridge.call("apps.open", path, params);
-try {
-    new URL(url);
-    return window.open(url);
-} catch {
-    console.error("Invalid URL:", url);
-    return null;
-}
-                }
-            }
-        }
-        if (prop === "params") {
-            return SWBridge.call("apps.getParams", location.pathname.split("/").slice(2).join("/"))
-        }
-        return createProxy([prop])
-    }
-});
+    const proxyCache = new Map()
 
     function createProxy(path = []) {
-    const key = path.join('.');
-    if (proxyCache.has(key)) return proxyCache.get(key);
+        const key = path.join('.')
+        if (proxyCache.has(key)) return proxyCache.get(key)
 
-    const p = new Proxy(() => {}, {
-        get(_, prop) {
-            return createProxy([...path, prop]);
-        },
-        apply(_, __, args) {
-            return SWBridge.call(path.join('.'), ...args);
-        }
-    });
-
-    proxyCache.set(key, p);
-    return p;
-}
-    window.api = api
-
-    fetch(location.href, { headers: { "X-App-Stage": "1" } })
-        .then(r => r.text())
-        .then(html => {
-         document.body.innerHTML = html
+        const p = new Proxy(() => {}, {
+            get(_, prop) {
+                return createProxy([...path, prop])
+            },
+            apply(_, __, args) {
+                return SWBridge.call(path.join('.'), ...args)
+            }
         })
-})()
-</script>
-</head>
-<body></body>
-</html>`
-    const stream = new ReadableStream({
-        start(controller) {
-            const encoder = new TextEncoder()
-            controller.enqueue(encoder.encode(injected))
 
-            controller.enqueue(encoder.encode(text))
-            controller.close()
+        proxyCache.set(key, p)
+        return p
+    }
+
+    window.api = new Proxy({}, {
+        get(_, prop) {
+            if (prop === "apps") {
+                return {
+                    open: async (path, params) => {
+                        const url = await SWBridge.call("apps.open", path, params)
+                        try {
+                            new URL(url)
+                            return window.open(url)
+                        } catch {
+                            console.error("Invalid URL:", url)
+                            return null
+                        }
+                    }
+                }
+            }
+
+            if (prop === "params") {
+                return SWBridge.call(
+                    "apps.getParams",
+                    location.pathname.split("/").slice(2).join("/")
+                )
+            }
+
+            return createProxy([prop])
         }
     })
+})()
+</script>
+`
 
-    return new Response(stream, {
+    const html = text.replace("</head>", `${injectedScript}</head>`)
+
+    return new Response(html, {
         headers: {
-            "Content-Type": type,
+            "Content-Type": "text/html",
             "Cross-Origin-Opener-Policy": "same-origin"
         }
     })
