@@ -22,6 +22,9 @@ self.addEventListener("fetch", e => {
     e.respondWith(route(e.request, parts.slice(1)))
 })
 async function route(request, parts) {
+    const urlObj = new URL(request.url)
+    const liveReloadUrl = urlObj.searchParams.get("livereload")
+
     const [creator, app, ...rest] = parts
 
     let vfsPath
@@ -38,24 +41,51 @@ async function route(request, parts) {
         return new Response("Forbidden", { status: 403 })
     }
 
-    const f = await readFile(vfsPath)
+    let type, text, data
 
-    if (!f || f.type !== "file") {
-        return new Response("Not found", { status: 404 })
-    }
-
-    const type = mime(vfsPath)
-
-    if (type !== "text/html") {
-        return new Response(f.data, {
-            headers: {
-                "Content-Type": type,
-                "Cross-Origin-Opener-Policy": "same-origin"
+    if (liveReloadUrl) {
+        try {
+            const res = await fetch(liveReloadUrl)
+            if (!res.ok) {
+                return new Response("LiveReload fetch failed", { status: 502 })
             }
-        })
-    }
 
-    const text = new TextDecoder().decode(f.data)
+            type = res.headers.get("Content-Type")?.split(";")[0] || "text/html"
+
+            if (type !== "text/html") {
+                data = await res.arrayBuffer()
+                return new Response(data, {
+                    headers: {
+                        "Content-Type": type,
+                        "Cross-Origin-Opener-Policy": "same-origin"
+                    }
+                })
+            }
+
+            text = await res.text()
+        } catch {
+            return new Response("LiveReload error", { status: 500 })
+        }
+    } else {
+        const f = await readFile(vfsPath)
+
+        if (!f || f.type !== "file") {
+            return new Response("Not found", { status: 404 })
+        }
+
+        type = mime(vfsPath)
+
+        if (type !== "text/html") {
+            return new Response(f.data, {
+                headers: {
+                    "Content-Type": type,
+                    "Cross-Origin-Opener-Policy": "same-origin"
+                }
+            })
+        }
+
+        text = new TextDecoder().decode(f.data)
+    }
 
     const injectedScript = `
 <script>
@@ -268,13 +298,8 @@ async function openFromSW(path, params = {}) {
         includeUncontrolled: true
     })
 
-    for (const client of clientsList) {
-        client.postMessage({
-            type: "from-sw",
-            action: "apps.open",
-            url
-        })
-    }
+    const target = clientsList.find(c => c.focused) ?? clientsList[0]
+    if (target) target.postMessage({ type: "from-sw", action: "apps.open", url })
 
     return url
 }

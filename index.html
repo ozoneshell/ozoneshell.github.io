@@ -1,169 +1,673 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ozone Kernel</title>
+    <title>Ozone Shell</title>
     <style>
-        body {
-            display: flex;
-            align-items: stretch;
-            height: 100vh;
-            margin: 0;
-            background-color: black;
-            color: rgb(219, 219, 219);
-            flex-direction: column;
-            font-family: sans-serif;
-            gap: 1em;
-        }
-
-        .loader {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            display: block;
-            margin: 15px auto;
-            position: relative;
-            color: #FFF;
-            opacity: .7;
-            left: -100px;
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
-            animation: shadowRolling 2s linear infinite;
+            margin: 0;
+            padding: 0;
         }
-
-        @keyframes shadowRolling {
-            0% {
-                box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
-            }
-
-            12% {
-                box-shadow: 100px 0 white, 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
-            }
-
-            25% {
-                box-shadow: 110px 0 white, 100px 0 white, 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
-            }
-
-            36% {
-                box-shadow: 120px 0 white, 110px 0 white, 100px 0 white, 0px 0 rgba(255, 255, 255, 0);
-            }
-
-            50% {
-                box-shadow: 130px 0 white, 120px 0 white, 110px 0 white, 100px 0 white;
-            }
-
-            62% {
-                box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 white, 120px 0 white, 110px 0 white;
-            }
-
-            75% {
-                box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 130px 0 white, 120px 0 white;
-            }
-
-            87% {
-                box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 130px 0 white;
-            }
-
-            100% {
-                box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
-            }
-        }
-
-        .tui {
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: black;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: .3em;
+            overflow: hidden;
+            color: #1a1a1a;
+        }
+        #wizard {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            max-height: 700px;
+            max-width: 1000px;
+            margin: auto;
+        }
+        .header-band {
+            background: #263B9C;
+            padding: 2em;
+            flex-shrink: 0;
+        }
+        .header-band .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            opacity: 0.85;
+        }
+        .header-band .brand span {
+            color: white;
+            font-size: 1em;
+            letter-spacing: 0.5px;
+        }
+        .header-band h1 {
+            color: white;
+            font-size: 2em;
+            font-weight: 400;
+            margin-bottom: 6px;
+        }
+        .header-band p {
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 1em;
+            line-height: 1.5;
+        }
+        .body-card {
+            background-color: white;
             flex: 1;
-            background: rgb(2, 2, 2);
+            border-radius: 2px;
+            padding: 2em;
+            padding-top: 2em;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+            overflow-y: auto;
+        }
+        .dot-nav {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 0 1em;
+            flex-shrink: 0;
+            transform: translateY(-3em);
+            pointer-events: none;
+        }
+        .dot-nav .dot {
+            width: 7px;
+            height: 7px;
             border-radius: 1em;
-            padding: 1em;
-            margin: 1em;
-
-            &>#logs {
-                flex: 1;
-                overflow-y: auto;
-                background-color: black;
-                padding: 1em;
-                border-radius: .5em;
-                height: 0;
-            }
+            background: #263B9C;
+            opacity: 0.25;
+            transition: width 0.2s;
         }
-
-        #prompt {
-            padding: 1em;
-            font-size: inherit;
-            background: rgb(10, 10, 10);
-            border: none;
-            outline: 0;
-            border-radius: .5em;
-            color: inherit;
+        .dot-nav .dot.active {
+            opacity: 1;
+            width: 1em;
         }
-
-        button {
-            padding: 1em;
-            font-size: inherit;
-            background: rgb(10, 10, 10);
-            border: none;
-            outline: 0;
-            border-radius: .5em;
-            color: inherit;
+        .screen {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
         }
-
-        .log {
-            padding: .3em;
-
-            &:nth-child(even) {
-                color: #ababab;
-            }
+        .screen.active {
+            display: flex;
+        }
+        .choice-card {
+            border: 1.5px solid #ddd;
+            border-radius: 4px;
+            padding: .9em 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: white;
+        }
+        .choice-card:hover {
+            border-color: #aaa;
+        }
+        .choice-card.selected {
+            border-color: #263B9C;
+            background: #f0f7ff;
+        }
+        .radio-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid #bbb;
+            flex-shrink: 0;
+            margin-top: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .choice-card.selected .radio-dot {
+            border-color: #263B9C;
+            background: #263B9C;
+        }
+        .radio-inner {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: white;
+            display: none;
+        }
+        .choice-card.selected .radio-inner {
+            display: block;
+        }
+        .choice-card .label {
+            font-size: 1em;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+        }
+        .choice-card .sublabel {
+            font-size: .9em;
+            color: #666;
+            line-height: 1.5;
+        }
+        .btn {
+            padding: 8px 22px;
+            border-radius: 2px;
+            font-size: 1em;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background: #263B9C;
+            color: white;
+            border-color: #263B9C;
+        }
+        .btn-primary:hover {
+            background: #006cbe;
+        }
+        .btn-danger {
+            background: #c42b1c;
+            color: white;
+            border-color: #c42b1c;
+        }
+        .btn-danger:hover {
+            background: #b0251a;
+        }
+        .btn-ghost {
+            background: transparent;
+            color: #263B9C;
+            border-color: #263B9C;
+        }
+        .btn-ghost:hover {
+            background: #f0f7ff;
+        }
+        .btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            gap: .5em;
+            padding-top: 12px;
+        }
+        .info-box {
+            background: #f7f7f7;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            padding: 1em 16px;
+        }
+        .info-box .info-label {
+            font-size: 1em;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .info-box .info-action {
+            font-size: 1em;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 3px;
+        }
+        .info-box .info-desc {
+            font-size: 1em;
+            color: #666;
+        }
+        .warn-box {
+            background: #fff8e6;
+            border: 1px solid #f0c040;
+            border-radius: 4px;
+            padding: 12px 16px;
+            font-size: 1em;
+            color: #7a5800;
+            line-height: 1.5;
+        }
+        .progress-track {
+            height: 4px;
+            background: #e8e8e8;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #263B9C;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1em;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .log-stream {
+            flex: 1;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px 12px;
+            color: #333;
+            line-height: 1.7;
+            min-height: 80px;
+            max-height: 240px;
+        }
+        .log-line {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+        }
+        .log-line .ts {
+            color: #999;
+            flex-shrink: 0;
+            font-size: 11px;
+        }
+        .log-line .msg {
+            word-break: break-all;
+        }
+        .log-line.log-ok .msg {
+            color: #1a7f3c;
+        }
+        .log-line.log-err .msg {
+            color: #c42b1c;
+        }
+        .log-line.log-warn .msg {
+            color: #7a5800;
+        }
+        .log-line.log-info .msg {
+            color: #263B9C;
+        }
+        .log-line.log-dim .msg {
+            color: #888;
+        }
+        .done-check {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #e6f4ea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .done-msg {
+            font-size: 1em;
+            color: #555;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .done-stats {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
         }
     </style>
     <link href="assets/logo-tiny.png" rel="icon">
 </head>
-
 <body>
-    <div class="tui">
-        <div class="tuiheader">
-            <button onclick="initializeOzone()">Update Everything</button>
-            <button id="reset">Reset Everything</button>
-            <script>
-                document.getElementById("reset").onclick = () => {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                        regs.forEach(reg => reg.unregister());
-                    });
-                    const req = indexedDB.deleteDatabase("ozoneVFS");
-                    req.onsuccess = () => console.log("Database deleted");
-                    req.onerror = e => console.error("Delete failed", e.target.error);
-                    req.onblocked = () => console.warn("Delete blocked, close other tabs");
-                };
-            </script>
+    <div id="wizard">
+        <div class="screen active" id="screen-0">
+            <div class="header-band">
+                <div class="brand">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+                        <path d="M5 8.5l2.5 2.5 4-5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Ozone Shell Setup</span>
+                </div>
+                <h1>Ozone Setup Wizard</h1>
+                <p>To use apps running on Ozone, you need to complete this one time, two-click setup.</p>
+            </div>
+            <div class="body-card">
+                <p style="margin-bottom:2px;">Select an action</p>
+                <div class="choice-card selected" id="choice-fresh" onclick="selectChoice('fresh')">
+                    <div class="radio-dot">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div>
+                        <div class="label">Fresh install</div>
+                        <div class="sublabel">Installs the basic Ozone default app package, and sets up the Ozone Shell. <b>Required for any Ozone app</b>.</div>
+                    </div>
+                </div>
+                <div class="choice-card" id="choice-update" onclick="selectChoice('update')">
+                    <div class="radio-dot">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div>
+                        <div class="label">Update everything</div>
+                        <div class="sublabel">Update all default apps and system files to their latest versions.
+                        </div>
+                    </div>
+                </div>
+                <div class="choice-card" id="choice-reset" onclick="selectChoice('reset')">
+                    <div class="radio-dot">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div>
+                        <div class="label">Reset everything</div>
+                        <div class="sublabel">Wipe all Ozone and app data. Unregisters service workers and deletes the
+                            Ozone virtual filesystem.</div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <span></span>
+                    <button class="btn btn-primary" onclick="goScreen(1)">Next →</button>
+                </div>
+            </div>
         </div>
-        <div id="logs">
-            <div class="log">Welcome to Ozone kernel</div>
+        <div class="screen" id="screen-1">
+            <div class="header-band">
+                <div class="brand">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+                        <path d="M5 8.5l2.5 2.5 4-5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Ozone Shell Setup</span>
+                </div>
+                <h1 id="confirm-title">Ready to install</h1>
+                <p>Review the details below before proceeding.</p>
+            </div>
+            <div class="body-card">
+                <div class="info-box">
+                    <div class="info-label">Selected action</div>
+                    <div class="info-action" id="confirm-action">Fresh install</div>
+                    <div class="info-desc" id="confirm-desc">Downloads default apps and registers service worker.</div>
+                </div>
+                <div class="warn-box" id="warn-box" style="display:none;">
+                    ⚠ This action is destructive. All stored data will be permanently deleted and cannot be recovered.
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-ghost" onclick="goScreen(0)">← Back</button>
+                    <button class="btn btn-primary" id="confirm-btn" onclick="goScreen(2)">Install</button>
+                </div>
+            </div>
         </div>
-        <input type="text" id="prompt" placeholder="___">
+        <div class="screen" id="screen-2">
+            <div class="header-band">
+                <div class="brand">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+                        <path d="M5 8.5l2.5 2.5 4-5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Ozone Shell Setup</span>
+                </div>
+                <h1 id="progress-title">Setting up...</h1>
+                <p>Please keep this tab open while setup completes.</p>
+            </div>
+            <div class="body-card">
+                <div>
+                    <div class="progress-meta">
+                        <span id="progress-label">Initializing...</span>
+                        <span id="progress-pct">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-bar"></div>
+                    </div>
+                </div>
+                <div id="log-stream" class="log-stream"></div>
+                <div class="btn-row">
+                    <span></span>
+                    <button class="btn btn-primary" id="done-btn" onclick="goScreen(3)" style="display:none;">Finish
+                        →</button>
+                </div>
+            </div>
+        </div>
+        <div class="screen" id="screen-3">
+            <div class="header-band">
+                <div class="brand">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" />
+                        <path d="M5 8.5l2.5 2.5 4-5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Ozone Shell Setup</span>
+                </div>
+                <h1 id="done-title">All done!</h1>
+                <p id="done-sub">Ozone is ready to use.</p>
+            </div>
+            <div class="body-card" style="align-items:center;justify-content:center;text-align:center;">
+                <div class="done-check">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+                        <path d="M6 13.5l5 5 9-10" stroke="#1a7f3c" stroke-width="2.2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <p class="done-msg" id="done-message">Your environment is set up and the service worker is registered.
+                    You can safely close this tab.</p>
+                <p class="done-stats" id="done-stats"></p>
+                <div class="btn-row" style="justify-content:center;margin-top:20px;">
+                    <button class="btn btn-ghost" onclick="goScreen(0)">Restart wizard</button>
+                    <button class="btn btn-primary" onclick="window.close()">Close</button>
+                </div>
+            </div>
+        </div>
+        <div class="dot-nav">
+            <div class="dot active" id="dot-0"></div>
+            <div class="dot" id="dot-1"></div>
+            <div class="dot" id="dot-2"></div>
+            <div class="dot" id="dot-3"></div>
+        </div>
     </div>
     <script>
+        var currentChoice = 'fresh';
+        
+        var _logEl = null;
+        var _progressPlan = null;
+        function getLogEl() {
+            if (!_logEl) _logEl = document.getElementById('log-stream');
+            return _logEl;
+        }
+        function ts() {
+            var d = new Date();
+            return d.getHours().toString().padStart(2, '0') + ':' +
+                d.getMinutes().toString().padStart(2, '0') + ':' +
+                d.getSeconds().toString().padStart(2, '0') + '.' +
+                d.getMilliseconds().toString().padStart(3, '0').slice(0, 2);
+        }
+        function log(msg, level) {
+            level = level || 'info';
+            var el = getLogEl();
+            if (!el) return;
+            var line = document.createElement('div');
+            line.className = 'log-line log-' + level;
+            line.innerHTML = '<span class="ts">' + escHtml(ts()) + '</span><span class="msg">' + escHtml(msg) + '</span>';
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
+            if (_progressPlan) advanceProgress(msg);
+        }
+        function escHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function setProgressPlan(phases) {
+            phases.forEach(function (p) { p._done = false; });
+            _progressPlan = { phases: phases, completedWeight: 0, totalWeight: 0 };
+            phases.forEach(function (p) { _progressPlan.totalWeight += p.weight; });
+        }
+        function advanceProgress(msg) {
+            var plan = _progressPlan;
+            if (!plan) return;
+            for (var i = 0; i < plan.phases.length; i++) {
+                var p = plan.phases[i];
+                if (!p._done && p.match.test(msg)) {
+                    p._done = true;
+                    plan.completedWeight += p.weight;
+                    var pct = Math.min(95, Math.round((plan.completedWeight / plan.totalWeight) * 100));
+                    setBar(pct, p.label);
+                    break;
+                }
+            }
+        }
+        function setBar(pct, label) {
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-pct').textContent = pct + '%';
+            if (label) document.getElementById('progress-label').textContent = label;
+        }
+        
+        function goScreen(n) {
+            document.querySelectorAll('.screen').forEach(function (s, i) { s.classList.toggle('active', i === n); });
+            document.querySelectorAll('.dot').forEach(function (d, i) { d.classList.toggle('active', i === n); });
+            if (n === 1) populateConfirm();
+            if (n === 2) runProgress();
+        }
+        function selectChoice(key) {
+            currentChoice = key;
+            ['fresh', 'update', 'reset'].forEach(function (k) {
+                document.getElementById('choice-' + k).classList.toggle('selected', k === key);
+            });
+        }
+        function populateConfirm() {
+            var c = CHOICES[currentChoice];
+            document.getElementById('confirm-title').textContent = c.title;
+            document.getElementById('confirm-action').textContent = c.action;
+            document.getElementById('confirm-desc').textContent = c.desc;
+            document.getElementById('warn-box').style.display = c.warn ? 'block' : 'none';
+            var btn = document.getElementById('confirm-btn');
+            btn.textContent = c.confirmBtn;
+            btn.className = 'btn ' + (currentChoice === 'reset' ? 'btn-danger' : 'btn-primary');
+        }
+        
+        var CHOICES = {
+            fresh: {
+                title: 'Ready to install', action: 'Fresh install',
+                desc: 'Downloads default apps and registers service worker.',
+                warn: false, confirmBtn: 'Install',
+                progressTitle: 'Installing Ozone...',
+                phases: [
+                    { match: /Downloading defaults/i, label: 'Fetching app list…', weight: 5 },
+                    { match: /Installing.*\/files/i, label: 'Installing app: files', weight: 15 },
+                    { match: /Installing.*\/settings/i, label: 'Installing app: settings', weight: 15 },
+                    { match: /Installing.*\/text/i, label: 'Installing app: text', weight: 15 },
+                    { match: /Installing.*\/media/i, label: 'Installing app: media', weight: 15 },
+                    { match: /Downloaded.*sharedAssets/i, label: 'Copying shared assets', weight: 10 },
+                    { match: /Service worker (registered|upgraded)/i, label: 'Registering service worker', weight: 10 },
+                    { match: /Ready!/i, label: 'Done', weight: 5 },
+                ],
+                run: async function () { await initializeOzone(); await ensureSW(); },
+                doneTitle: 'Installation complete', doneSub: 'Ozone is ready.',
+                doneMsg: 'Ozone initial setup is complete. You may now safely close this tab.'
+            },
+            update: {
+                title: 'Ready to update', action: 'Update everything',
+                desc: 'Re-downloads all default apps and system assets to their latest versions.',
+                warn: false, confirmBtn: 'Update',
+                progressTitle: 'Updating Ozone...',
+                phases: [
+                    { match: /Downloading defaults/i, label: 'Fetching latest versions…', weight: 5 },
+                    { match: /Installing.*\/files/i, label: 'Updating app: files', weight: 15 },
+                    { match: /Installing.*\/settings/i, label: 'Updating app: settings', weight: 15 },
+                    { match: /Installing.*\/text/i, label: 'Updating app: text', weight: 15 },
+                    { match: /Installing.*\/media/i, label: 'Updating app: media', weight: 15 },
+                    { match: /Downloaded.*sharedAssets/i, label: 'Refreshing shared assets', weight: 10 },
+                    { match: /Service worker (registered|upgraded)/i, label: 'Refreshing service worker', weight: 10 },
+                    { match: /Ready!/i, label: 'Done', weight: 5 },
+                ],
+                run: async function () { await initializeOzone(); await ensureSW(); },
+                doneTitle: 'Update complete', doneSub: 'All components are up to date.',
+                doneMsg: 'Apps and assets updated to the latest version. You may safely close this tab.'
+            },
+            reset: {
+                title: 'Ready to reset', action: 'Reset everything',
+                desc: 'Unregisters all service workers and deletes the ozoneVFS IndexedDB database.',
+                warn: true, confirmBtn: 'Reset',
+                progressTitle: 'Resetting Ozone...',
+                phases: [
+                    { match: /Unregistering/i, label: 'Unregistering service workers', weight: 30 },
+                    { match: /Deleting database/i, label: 'Deleting filesystem (ozoneVFS)', weight: 40 },
+                    { match: /Clearing local state/i, label: 'Clearing local state', weight: 30 },
+                ],
+                run: async function () {
+                    log('Unregistering service workers…', 'warn');
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    if (regs.length === 0) {
+                        log('No service workers registered', 'dim');
+                    } else {
+                        await Promise.all(regs.map(r => r.unregister()));
+                        log('Unregistered ' + regs.length + ' service worker(s)', 'ok');
+                    }
+                    log('Deleting database ozoneVFS…', 'warn');
+                    await new Promise(function (resolve, reject) {
+                        var req = indexedDB.deleteDatabase('ozoneVFS');
+                        req.onsuccess = function () { log('Database deleted', 'ok'); resolve(); };
+                        req.onerror = function () { log('Delete error: ' + req.error, 'err'); reject(req.error); };
+                        req.onblocked = function () { log('Delete blocked — close other tabs first', 'warn'); resolve(); };
+                    });
+                    log('Clearing local state…', 'dim');
+                    localStorage.removeItem('osware_sw_version');
+                    log('Local state cleared', 'ok');
+                },
+                doneTitle: 'Reset complete', doneSub: 'All data has been wiped.',
+                doneMsg: 'Service workers unregistered and filesystem deleted. Refresh the page to start fresh.'
+            }
+        };
+        
+        async function runProgress() {
+            var c = CHOICES[currentChoice];
+            _logEl = document.getElementById('log-stream');
+            _logEl.innerHTML = '';
+            document.getElementById('progress-title').textContent = c.progressTitle;
+            document.getElementById('done-title').textContent = c.doneTitle;
+            document.getElementById('done-sub').textContent = c.doneSub;
+            document.getElementById('done-message').textContent = c.doneMsg;
+            document.getElementById('done-stats').textContent = '';
+            document.getElementById('done-btn').style.display = 'none';
+            setBar(0, 'Starting…');
+            setProgressPlan(c.phases);
+            var t0 = Date.now();
+            var fileCount = 0, errorCount = 0;
+            
+            
+            var _origLog = window.log;
+            window.log = function (msg) {
+                var lvl = 'info';
+                if (/ready!|registered|upgraded|deleted|cleared|installed/i.test(msg)) lvl = 'ok';
+                else if (/error|failed/i.test(msg)) lvl = 'err';
+                else if (/warn|unregister|blocked|destructive/i.test(msg)) lvl = 'warn';
+                else if (/^\s*\.\./.test(msg)) lvl = 'dim';
+                _origLog(msg, lvl);
+                if (/^\s*\.\./.test(msg)) fileCount++;
+            };
+            try {
+                await c.run();
+            } catch (e) {
+                log('Error: ' + e.message, 'err');
+                errorCount++;
+                console.error('Setup error:', e);
+            }
+            window.log = _origLog;
+            var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+            setBar(100, 'Complete');
+            if (errorCount > 0) log(errorCount + ' error(s) encountered — see above', 'err');
+            var stats = 'Completed in ' + elapsed + 's';
+            if (fileCount > 0) stats += ' · ' + fileCount + ' files installed';
+            if (errorCount > 0) stats += ' · ' + errorCount + ' error(s)';
+            document.getElementById('done-stats').textContent = stats;
+            document.getElementById('done-btn').style.display = 'inline-block';
+        }
+    </script>
+    <script>
         var state = {
-            defaultApps: ["files", "settings", "text", "media"],
+            defaultApps: ["files", "settings", "text", "media", "menu"],
             appRepo: "additionalApps/",
             "mimedb": {}
         }
-
         document.addEventListener("DOMContentLoaded", async () => {
             const mimeurl = "assets/mimedb.json"
             const res = await fetch(mimeurl)
             if (!res.ok) throw new Error("Failed to fetch " + mimeurl)
-
             const status = await ensureRoot();
-
-            if (!status) {
-                log("Initializing filesystem")
-                initializeOzone();
-            } else {
-                log("Resuming filesystem...")
-            }
-
+            if (status) log("Resuming filesystem...")
             const data = await res.json()
             state.mimedb = data;
             let directlyLoadApp = new URLSearchParams(window.location.search).get("app")
@@ -178,35 +682,25 @@
                 appURL = new URL(appURL, window.location.href).href
                 await packageAppFromURL(appURL);
             }
-            ensureSW();
-            log("Ozone is Ready! If you want to, you can safely close this tab now.")
         })
-
         async function ensureSW() {
             if (!("serviceWorker" in navigator)) return
-
             const versions = await fetch("/versions.json").then(r => r.json())
             const v = versions.osware
-
             const reg = await navigator.serviceWorker.getRegistration()
-
             if (!reg) {
                 await navigator.serviceWorker.register(`/sw.js?v=${v}`)
                 localStorage.setItem("osware_sw_version", v)
-
                 log("Service worker registered")
                 return
             }
-
             const current = localStorage.getItem("osware_sw_version")
-
             if (current != v) {
                 await navigator.serviceWorker.register(`/sw.js?v=${v}`)
                 localStorage.setItem("osware_sw_version", v)
                 log("Service worker upgraded")
             }
         }
-
         async function initializeOzone() {
             log("Downloading defaults... ")
             for (const app of state.defaultApps) {
@@ -216,11 +710,9 @@
             await copySharedAssets();
             log("Ready!")
         }
-
         async function copySharedAssets() {
             const sharedAssets = ["google_sans.ttf", "icons.woff2"];
             const base = `/system/sharedAssets`;
-
             await Promise.all(
                 sharedAssets.map(async file => {
                     try {
@@ -230,44 +722,28 @@
                         const blob = await res.blob();
                         log(`Downloaded ${base}/${file}`)
                         await writeFile(`${base}/${file}`, blob);
-                    } catch (e) {
-                        console.error(e);
-                    }
+                    } catch (e) { console.error(e); }
                 })
             );
         }
-
         async function packageAppFromURL(appURL) {
             const manifestURL = appURL + "/manifest.json"
             const res = await fetch(manifestURL)
             if (!res.ok) throw Error("Failed to fetch " + manifestURL)
-
             const data = await res.json()
             const base = `/system/apps/${data.author}/${data.name}`
             const sources = data.sources || []
-
-
             log(`. Installing ${data.author}/${data.name}...`)
             console.log(data.capabilities)
-
             await settings.set(`${data.author}/${data.name}`, base, "TagPathIndex.json")
-
             if (data.capabilities) {
                 const FileBindings = (await settings.get("FileBindings")) ?? {}
                 const key = `${data.author}/${data.name}`
-
                 for (const ext of data.capabilities) {
-                    FileBindings[ext] = [
-                        ...new Set([
-                            ...(FileBindings[ext] ?? []),
-                            key
-                        ])
-                    ]
+                    FileBindings[ext] = [...new Set([...(FileBindings[ext] ?? []), key])]
                 }
-
                 settings.set("FileBindings", FileBindings)
             }
-
             await Promise.all(
                 sources.map(async file => {
                     try {
@@ -275,15 +751,11 @@
                         log(` .. ${file}`)
                         const r = await fetch(fileURL)
                         if (!r.ok) return
-
                         const blob = await r.blob()
-                        const path = `${base}/${file}`
-
-                        await writeFile(path, blob)
+                        await writeFile(`${base}/${file}`, blob)
                     } catch { }
                 })
             )
-
             try {
                 const landingURL = appURL + "/" + data.landing
                 const lr = await fetch(landingURL)
@@ -293,32 +765,13 @@
                     await writeFile(`${base}/index.html`, landingBlob)
                 }
             } catch { }
-
-            const manifestBlob = new Blob(
-                [JSON.stringify(data, null, 2)],
-                { type: "application/json" }
-            )
-
+            const manifestBlob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
             await writeFile(`${base}/manifest.json`, manifestBlob)
-
             return base
         }
-
-        function log(text) {
-            let x = document.createElement("div");
-            x.className = "log";
-            x.innerText = text;
-            document.getElementById("logs").appendChild(x)
-        }
-
         async function eraseExistance() {
             const regs = await navigator.serviceWorker.getRegistrations()
-
             await Promise.all(regs.map(r => r.unregister()))
-
-            const clients = await navigator.serviceWorker.getRegistrations()
-            console.log(clients)
-
             setTimeout(() => {
                 const req = indexedDB.deleteDatabase("ozoneVFS")
                 req.onsuccess = () => console.log("deleted")
@@ -330,5 +783,4 @@
     <script src="scripts/utility.js"></script>
     <script src="scripts/vfs.js"></script>
 </body>
-
 </html>

@@ -1,0 +1,15 @@
+{
+    "name": "Menu",
+    "author": "ozone",
+    "description": "An app to launch other apps.",
+    "permissions": [
+        "files"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1",
+    "handle": "launcher"
+}

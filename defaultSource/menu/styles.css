@@ -1,0 +1,56 @@
+:root {
+    --one: 25, 25, 26;
+    --two: 35, 36, 37;
+    --three: 47, 49, 49;
+    --four: 60, 60, 60;
+    --five: 140, 143, 141;
+
+    --highone: 4, 76, 117;
+    --highlight: 165, 195, 249;
+
+    --highdark: 15, 50, 110;
+    --hightext: 191, 229, 254;
+
+    --text: 240, 240, 240;
+}
+
+body {
+    margin: 0;
+    padding: 3em;
+    box-sizing: border-box;
+    background-color: rgb(var(--one));
+    color: rgb(var(--text));
+    font-family: "Google Sans",
+        sans-serif;
+}
+
+@font-face {
+    font-family: "Google Sans";
+    font-style: normal;
+    src: url("sharedAssets/google_sans.ttf") format('truetype');
+}
+
+#menu {
+    display: flex;
+    gap: 1em;
+}
+
+.app_shortcut {
+    display: flex;
+    gap: .5em;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 4em;
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+
+    &>.app_icon {
+        background-color: white;
+        padding: .5em;
+        color: black;
+        font-size: 1.5em;
+        aspect-ratio: 1 / 1;
+        border-radius: .5em;
+    }
+}
