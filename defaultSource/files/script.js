@@ -103,7 +103,7 @@ var fileTypeIcons = {
     "jpeg": "image",
     "webp": "image",
     "jpg": "image",
-    "mp3": "music",
+    "mp3": "music_note",
     "mp4": "video_file",
     "mpeg": "video_file",
     "webm": "video_file",

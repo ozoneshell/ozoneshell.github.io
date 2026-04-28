@@ -21,213 +21,158 @@ self.addEventListener("fetch", e => {
 
     e.respondWith(route(e.request, parts.slice(1)))
 })
-async function route(request, parts) {
-    const urlObj = new URL(request.url)
-    const liveReloadUrl = urlObj.searchParams.get("livereload")
 
-    const [creator, app, ...rest] = parts
-
-    let vfsPath
-
-    if (rest[0] === "sharedAssets") {
-        const file = rest.slice(1).join("/") || "index.html"
-        vfsPath = `/system/sharedAssets/${file}`
-    } else {
-        const file = rest.join("/") || "index.html"
-        vfsPath = `/system/apps/${creator}/${app}/${file}`
-    }
-
-    if (!/^\/system\/(sharedAssets|apps\/[^/]+\/[^/]+)\//.test(vfsPath)) {
-        return new Response("Forbidden", { status: 403 })
-    }
-
-    let type, text, data
-
-    if (liveReloadUrl) {
-        try {
-            const res = await fetch(liveReloadUrl)
-            if (!res.ok) {
-                return new Response("LiveReload fetch failed", { status: 502 })
-            }
-
-            type = res.headers.get("Content-Type")?.split(";")[0] || "text/html"
-
-            if (type !== "text/html") {
-                data = await res.arrayBuffer()
-                return new Response(data, {
-                    headers: {
-                        "Content-Type": type,
-                        "Cross-Origin-Opener-Policy": "same-origin"
-                    }
-                })
-            }
-
-            text = await res.text()
-        } catch {
-            return new Response("LiveReload error", { status: 500 })
-        }
-    } else {
-        const f = await readFile(vfsPath)
-
-        if (!f || f.type !== "file") {
-            return new Response("Not found", { status: 404 })
-        }
-
-        type = mime(vfsPath)
-
-        if (type !== "text/html") {
-            return new Response(f.data, {
-                headers: {
-                    "Content-Type": type,
-                    "Cross-Origin-Opener-Policy": "same-origin"
-                }
-            })
-        }
-
-        text = new TextDecoder().decode(f.data)
-    }
-
-    const injectedScript = `
-<script>
+const SHARED_PREFIX = "/system/sharedAssets/"
+const APPS_PREFIX = "/system/apps/"
+const INJECTED_SCRIPT = `<script>
 (() => {
-    if (window.opener) {
-        try { window.opener = null } catch {}
-    }
-
+    if (window.opener) { try { window.opener = null } catch {} }
     const _open = window.open
-    window.open = function(url, target, features) {
-        const f = features ? features + ',noopener,noreferrer' : 'noopener,noreferrer'
-        return _open.call(window, url, target || '_blank', f)
-    }
+    window.open = (url, target, features) =>
+        _open.call(window, url, target || '_blank',
+            features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
     class SWBridge {
         static #id = 0
         static #wait = new Map()
-
         static call(method, ...args) {
             return new Promise(res => {
                 const id = ++this.#id
                 this.#wait.set(id, res)
-
-                navigator.serviceWorker.controller?.postMessage({
-                    type: "rpc",
-                    id,
-                    method,
-                    args
-                })
+                navigator.serviceWorker.controller?.postMessage({ type:"rpc", id, method, args })
             })
         }
-
         static init() {
-            navigator.serviceWorker.addEventListener("message", e => {
-                const d = e.data
-
+            navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
                 if (d?.type === "rpc-res") {
-                    const fn = SWBridge.#wait.get(d.id)
-                    if (fn) {
-                        SWBridge.#wait.delete(d.id)
-                        fn(d.result)
-                    }
-                    return
-                }
-
-                if (d?.type === "from-sw") {
-                    if (d.action === "apps.open") {
-                        try {
-                            new URL(d.url, location.origin)
-                            window.open(d.url, "_blank", "noopener,noreferrer")
-                        } catch {
-                            console.error("Invalid URL from SW:", d.url)
-                        }
-                    }
+                    SWBridge.#wait.get(d.id)?.(d.result)
+                    SWBridge.#wait.delete(d.id)
+                } else if (d?.type === "from-sw" && d.action === "apps.open") {
+                    try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
+                    catch { console.error("Invalid URL from SW:", d.url) }
                 }
             })
         }
     }
-
     SWBridge.init()
 
     const proxyCache = new Map()
-
-    function createProxy(path = []) {
-        const key = path.join('.')
-        if (proxyCache.has(key)) return proxyCache.get(key)
-
+    function createProxy(path) {
+        if (proxyCache.has(path)) return proxyCache.get(path)
         const p = new Proxy(() => {}, {
-            get(_, prop) {
-                return createProxy([...path, prop])
-            },
-            apply(_, __, args) {
-                return SWBridge.call(path.join('.'), ...args)
-            }
+            get(_, prop) { return createProxy(path + '.' + prop) },
+            apply(_, __, args) { return SWBridge.call(path, ...args) }
         })
-
-        proxyCache.set(key, p)
+        proxyCache.set(path, p)
         return p
     }
 
     window.api = new Proxy({}, {
         get(_, prop) {
-            if (prop === "apps") {
-                return {
-                    open: async (path, params) => {
-                        const url = await SWBridge.call("apps.open", path, params)
-                        try {
-                            new URL(url)
-                            return window.open(url)
-                        } catch {
-                            console.error("Invalid URL:", url)
-                            return null
-                        }
-                    }
+            if (prop === "apps") return {
+                open: async (path, params) => {
+                    const url = await SWBridge.call("apps.open", path, params)
+                    try { new URL(url); return window.open(url) }
+                    catch { console.error("Invalid URL:", url); return null }
                 }
             }
-
-            if (prop === "params") {
-                return SWBridge.call(
-                    "apps.getParams",
-                    location.pathname.split("/").slice(2).join("/")
-                )
-            }
-
-            return createProxy([prop])
+            if (prop === "params") return SWBridge.call(
+                "apps.getParams", location.pathname.split("/").slice(2).join("/"))
+            return createProxy(prop)
         }
     })
 })()
-</script>
-`
+</script></head>`
 
-    const html = text.replace("</head>", `${injectedScript}</head>`)
+const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
+const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
 
-    return new Response(html, {
-        headers: {
-            "Content-Type": "text/html",
-            "Cross-Origin-Opener-Policy": "same-origin"
+export async function route(request, parts) {
+    const rawUrl = request.url
+    const lrIdx = rawUrl.indexOf("livereload=")
+    const liveReloadUrl = lrIdx !== -1
+        ? new URL(rawUrl).searchParams.get("livereload")
+        : null
+
+    const isShared = parts[2] === "sharedAssets"
+    const vfsPath = isShared
+        ? SHARED_PREFIX + (parts.length > 3 ? parts.slice(3).join("/") : "index.html")
+        : APPS_PREFIX + parts[0] + "/" + parts[1] + "/" + (parts.length > 2 ? parts.slice(2).join("/") : "index.html")
+
+    if (isShared) {
+        if (parts.length < 3) return new Response("Forbidden", { status: 403 })
+    } else {
+        if (!parts[0] || !parts[1] || parts[0].includes("/") || parts[1].includes("/"))
+            return new Response("Forbidden", { status: 403 })
+    }
+
+    let contentType, body
+
+    if (liveReloadUrl) {
+        let res
+        try {
+            res = await fetch(liveReloadUrl)
+            if (!res.ok) return new Response("LiveReload fetch failed", { status: 502 })
+        } catch {
+            return new Response("LiveReload error", { status: 500 })
         }
-    })
+
+        const ct = res.headers.get("Content-Type") ?? "text/html"
+        const semi = ct.indexOf(";")
+        contentType = semi === -1 ? ct : ct.slice(0, semi)
+
+        if (contentType !== "text/html") {
+            return new Response(res.body, {
+                headers: { "Content-Type": contentType, ...ASSET_HEADERS }
+            })
+        }
+
+        body = await res.text()
+    } else {
+        const f = await readFile(vfsPath)
+        if (!f || f.type !== "file") return new Response("Not found", { status: 404 })
+
+        contentType = mime(vfsPath)
+
+        if (contentType !== "text/html") {
+            return new Response(f.data, {
+                headers: { "Content-Type": contentType, ...ASSET_HEADERS }
+            })
+        }
+
+        body = new TextDecoder().decode(f.data)
+    }
+
+    const insertAt = body.indexOf("</head>")
+    const html = insertAt === -1
+        ? body + INJECTED_SCRIPT
+        : body.slice(0, insertAt) + INJECTED_SCRIPT + body.slice(insertAt + 7) 
+    return new Response(html, { headers: HTML_HEADERS })
+}
+
+const MIME_MAP = {
+    html: "text/html",
+    js: "application/javascript",
+    css: "text/css",
+    json: "application/json",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    svg: "image/svg+xml",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    txt: "text/plain"
 }
 
 function mime(p) {
-    const ext = p.split(".").pop().toLowerCase()
-
-    return {
-        html: "text/html",
-        js: "application/javascript",
-        css: "text/css",
-        json: "application/json",
-        png: "image/png",
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        svg: "image/svg+xml",
-        woff2: "font/woff2",
-        ttf: "font/ttf",
-        mp4: "video/mp4",
-        webm: "video/webm",
-        mp3: "audio/mpeg",
-        wav: "audio/wav",
-        ogg: "audio/ogg",
-        txt: "text/plain"
-    }[ext] || "application/octet-stream"
+    const i = p.lastIndexOf(".")
+    const ext = i !== -1 ? p.slice(i + 1).toLowerCase() : ""
+    return MIME_MAP[ext] || "application/octet-stream"
 }
 
 const rpc = {
