@@ -35,11 +35,18 @@ const INJECTED_SCRIPT = `<script>
     class SWBridge {
         static #id = 0
         static #wait = new Map()
-        static call(method, ...args) {
-            return new Promise(res => {
+        static async call(method, ...args) {
+            return new Promise(async res => {
                 const id = ++this.#id
                 this.#wait.set(id, res)
-                navigator.serviceWorker.controller?.postMessage({ type:"rpc", id, method, args })
+                
+                let controller = navigator.serviceWorker.controller
+                if (!controller) {
+                    await navigator.serviceWorker.ready
+                    controller = navigator.serviceWorker.controller
+                }
+                
+                controller?.postMessage({ type: "rpc", id, method, args })
             })
         }
         static init() {
@@ -70,14 +77,48 @@ const INJECTED_SCRIPT = `<script>
     window.api = new Proxy({}, {
         get(_, prop) {
             if (prop === "apps") return {
-                open: async (path, params) => {
-                    const url = await SWBridge.call("apps.open", path, params)
-                    try { new URL(url); return window.open(url) }
-                    catch { console.error("Invalid URL:", url); return null }
+                open: async (path, params, mode) => {
+    const result = await SWBridge.call("apps.open", path, params, mode)
+
+    if (typeof result === "string") {
+        window.open(result, "_blank", "noopener,noreferrer")
+        return null
+    }
+
+    const popup = window.open(
+        result.url, "_blank",
+        "popup=true,width=800,height=600,noopener,noreferrer"
+    )
+
+                    const pollClose = setInterval(async () => {
+                        if (popup?.closed) {
+                            clearInterval(pollClose)
+                            await SWBridge.call("apps.notifyPopupClosed", result.responseId)
+                        }
+                    }, 500)
+
+                    const value = await SWBridge.call("apps.waitForResponse", result.responseId)
+                    clearInterval(pollClose)
+                    return value
+                },
+
+                respond: async (value) => {
+                    const params = await SWBridge.call(
+                        "apps.getParams",
+                        location.pathname.split("/").slice(2).join("/")
+                    )
+                    if (params.__responseId) {
+                        await SWBridge.call("apps.respond", params.__responseId, value)
+                        window.close()
+                    }
                 }
             }
+
             if (prop === "params") return SWBridge.call(
-                "apps.getParams", location.pathname.split("/").slice(2).join("/"))
+                "apps.getParams",
+                location.pathname.split("/").slice(2).join("/")
+            )
+
             return createProxy(prop)
         }
     })
@@ -87,7 +128,7 @@ const INJECTED_SCRIPT = `<script>
 const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
 
-export async function route(request, parts) {
+async function route(request, parts) {
     const rawUrl = request.url
     const lrIdx = rawUrl.indexOf("livereload=")
     const liveReloadUrl = lrIdx !== -1
@@ -146,7 +187,7 @@ export async function route(request, parts) {
     const insertAt = body.indexOf("</head>")
     const html = insertAt === -1
         ? body + INJECTED_SCRIPT
-        : body.slice(0, insertAt) + INJECTED_SCRIPT + body.slice(insertAt + 7) 
+        : body.slice(0, insertAt) + INJECTED_SCRIPT + body.slice(insertAt + 7)
     return new Response(html, { headers: HTML_HEADERS })
 }
 
@@ -175,6 +216,8 @@ function mime(p) {
     return MIME_MAP[ext] || "application/octet-stream"
 }
 
+const pendingResponses = new Map()
+
 const rpc = {
     files: {
         read: readFile,
@@ -194,13 +237,69 @@ const rpc = {
         parentOf,
         norm
     },
+
     apps: {
-        async open(path, params = {}) {
-            appParams.set(path, params)
-            return `/apps/${path}`
+        async open(path, params = {}, mode) {
+            const key = path.replace(/\/+$/, "")
+            const url = `/apps/${key}/`
+
+            if (mode !== "popup") {
+                appParams.set(key, { ...params })
+                return url
+            }
+
+            const responseId = crypto.randomUUID()
+            appParams.set(key, { ...params, __responseId: responseId })
+
+            pendingResponses.set(responseId, { resolve: null, settled: false, value: undefined })
+
+            return { url, responseId, popup: true }
+        },
+
+        waitForResponse(responseId) {
+            return new Promise(resolve => {
+                const entry = pendingResponses.get(responseId)
+                if (!entry) return resolve(null)
+                if (entry.settled) return resolve(entry.value)
+
+                const timer = setTimeout(() => {
+                    entry.settled = true
+                    entry.value = null
+                    pendingResponses.delete(responseId)
+                    resolve(null)
+                }, 5 * 60 * 1000)
+
+                entry.resolve = (val) => {
+                    clearTimeout(timer)
+                    entry.settled = true
+                    entry.value = val
+                    pendingResponses.delete(responseId)
+                    resolve(val)
+                }
+            })
+        },
+
+        respond(responseId, value) {
+            const entry = pendingResponses.get(responseId)
+            if (entry?.resolve) entry.resolve(value)
+            else if (entry) {
+                entry.settled = true
+                entry.value = value
+            }
+        },
+
+        notifyPopupClosed(responseId) {
+            const entry = pendingResponses.get(responseId)
+            if (!entry || entry.settled) return
+            entry.resolve?.(null) ?? (() => {
+                entry.settled = true
+                entry.value = null
+            })()
+            pendingResponses.delete(responseId)
         },
         getParams(path) {
-            return appParams.get(path.replace(/\/$/, "")) || {}
+            const key = path.replace(/^\/+|\/+$/g, "")
+            return appParams.get(key) || {}
         }
     },
     settings
@@ -233,10 +332,10 @@ self.addEventListener("message", async e => {
         result
     })
 })
-
 async function openFromSW(path, params = {}) {
-    appParams.set(path, params)
-    const url = `/apps/${path}`
+    const key = path.replace(/\/+$/, "")
+    appParams.set(key, params)
+    const url = `/apps/${key}/`
 
     const clientsList = await self.clients.matchAll({
         type: "window",

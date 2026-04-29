@@ -57,6 +57,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderFiles(el.dataset.path)
     })
 
+    const sessionDeterminer = (await api.params)?.type;
+    if (sessionDeterminer == "file_selector") {
+        state.mode = sessionDeterminer;
+    } else if (sessionDeterminer == "folder_selector") {
+        state.mode = sessionDeterminer;
+    }
+
     renderFiles("/");
 
     const btns = document.querySelectorAll('[data-openbarpage]')
@@ -161,7 +168,13 @@ class FileItem {
 
     open() {
         if (this.item.type === "folder") renderFiles(this.item.path)
-        else api.files.open(this.item.path)
+        else {
+            if (state.mode == "file_selector") {
+                api.apps.respond(this.item.path)
+            } else {
+                api.files.open(this.item.path)
+            }
+        }
     }
 }
 

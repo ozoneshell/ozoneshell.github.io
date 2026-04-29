@@ -1,6 +1,6 @@
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const path = (await api.params)?.file || "";
+    var path = (await api.params)?.file || "";
     const textarea = document.getElementById("main_input");
 
     async function loadFile() {
@@ -11,8 +11,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         let text;
+
         if (file.data instanceof Blob) {
             text = await file.data.text();
+        } else if (file.data instanceof ArrayBuffer) {
+            text = new TextDecoder().decode(file.data);
         } else {
             text = file.data;
         }
@@ -21,11 +24,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     async function saveFile() {
         const data = textarea.value;
-        await api.files.write(path, data);
+        const encoded = new TextEncoder().encode(data);
+        await api.files.write(path, encoded);
     }
 
     loadFile();
-    document.getElementById("openFileBtn").addEventListener("click", ()=> {
-        api.apps.open("ozone/Files", { type: 'file_selector' })
-    })
+
+    document.getElementById("openFileBtn").addEventListener("click", async () => {
+        let x = await api.apps.open("ozone/Files", { type: "file_selector" }, "popup");
+        path = x;
+        loadFile();
+    });
 })

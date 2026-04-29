@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const path = ((await api.params)?.file) || "";
+    var path = ((await api.params)?.file) || "";
     const player = document.getElementById("main_media_element");
 
     async function loadFile() {
@@ -32,7 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadFile();
 
-    document.getElementById("openFileBtn").addEventListener("click", () => {
-        api.apps.open("ozone/Files", { type: "file_selector" });
+    document.getElementById("openFileBtn").addEventListener("click", async () => {
+        let x = await api.apps.open("ozone/Files", { type: "file_selector" }, "popup");
+        path = x;
+        loadFile();
     });
 });
