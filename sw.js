@@ -24,9 +24,32 @@ self.addEventListener("fetch", e => {
 
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
-const INJECTED_SCRIPT = `<script>
+function buildInjectedScript(iconSvg = "") {
+    const loaderDiv = iconSvg
+        ? `<div id="_app_loader"><div id="_app_loader_icon">${iconSvg}</div></div>`
+        : ""
+
+    return {
+        head: `<style>
+html.app-ready #_app_loader { opacity: 0; pointer-events: none; }
+html {overflow: hidden;}
+html.app-ready {overflow: auto;}
+#_app_loader {
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.45s ease;
+    background: inherit;
+    pointer-events: none;
+}
+#_app_loader_icon {
+    width: 72px; height: 72px;
+}
+#_app_loader_icon svg { width: 100%; height: 100%; }
+</style>
+<script>
 (() => {
     if (window.opener) { try { window.opener = null } catch {} }
+    window.addEventListener("load", () => document.documentElement.classList.add("app-ready"))
     const _open = window.open
     window.open = (url, target, features) =>
         _open.call(window, url, target || '_blank',
@@ -84,11 +107,31 @@ const INJECTED_SCRIPT = `<script>
         window.open(result, "_blank", "noopener,noreferrer")
         return null
     }
+ const screenWidth = window.screen.availWidth;
+                const screenHeight = window.screen.availHeight;
 
-    const popup = window.open(
-        result.url, "_blank",
-        "popup=true,width=800,height=600,noopener,noreferrer"
-    )
+                const maxWidth = screenWidth * 0.8;
+                const maxHeight = screenHeight * 0.8;
+
+                let width = maxWidth;
+                let height = width * (6 / 9);
+
+                if (height > maxHeight) {
+                height = maxHeight;
+                width = height * (9 / 6);
+                }
+
+                height = Math.min(height, maxHeight);
+                width = Math.min(width, maxWidth);
+
+                const left = Math.max(0, (screenWidth - width) / 2);
+                const top = Math.max(0, (screenHeight - height) / 2);
+
+                window.open(
+                    result.url,
+                    "_blank",
+                    \`popup=yes,width=\${Math.floor(width)},height=\${Math.floor(height)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`
+                );
 
                     const pollClose = setInterval(async () => {
                         if (popup?.closed) {
@@ -123,7 +166,10 @@ const INJECTED_SCRIPT = `<script>
         }
     })
 })()
-</script></head>`
+</script>`,
+        loaderDiv
+    }
+}
 
 const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
@@ -184,10 +230,35 @@ async function route(request, parts) {
         body = new TextDecoder().decode(f.data)
     }
 
-    const insertAt = body.indexOf("</head>")
-    const html = insertAt === -1
-        ? body + INJECTED_SCRIPT
-        : body.slice(0, insertAt) + INJECTED_SCRIPT + body.slice(insertAt + 7)
+    let iconSvg = ""
+    if (!isShared) {
+        const manifestPath = APPS_PREFIX + parts[0] + "/" + parts[1] + "/manifest.json"
+        const mf = await readFile(manifestPath)
+        if (mf?.type === "file") {
+            try {
+                const manifest = JSON.parse(new TextDecoder().decode(mf.data))
+                if (typeof manifest.icon === "string") iconSvg = manifest.icon
+            } catch { }
+        }
+    }
+
+  const { head, loaderDiv } = buildInjectedScript(iconSvg)
+
+    const headIdx = body.indexOf("</head>")
+    let html = headIdx === -1
+        ? body + head
+        : body.slice(0, headIdx) + head + "</head>" + body.slice(headIdx + 7)
+
+    if (loaderDiv) {
+        const bodyIdx = html.indexOf("<body")
+        const bodyTagEnd = bodyIdx !== -1 ? html.indexOf(">", bodyIdx) + 1 : -1
+        if (bodyTagEnd !== -1) {
+            html = html.slice(0, bodyTagEnd) + loaderDiv + html.slice(bodyTagEnd)
+        } else {
+            html = loaderDiv + html
+        }
+    }
+
     return new Response(html, { headers: HTML_HEADERS })
 }
 
