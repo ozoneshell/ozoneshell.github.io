@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Page</title>
+    <title>Files</title>
+    <link rel="stylesheet" href="sharedAssets/ozone_gui.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -81,14 +82,29 @@
                             <span>Import folder</span>
                         </div>
                     </div>
+                    <div class="page flex x" data-barpageid="view">
+                        <div class="menu_action" data-action="grid_view">
+                            <div class="icon">grid_view</div>
+                            <span>Grid</span>
+                        </div>
+                        <div class="menu_action" data-action="list_view">
+                            <div class="icon">view_list</div>
+                            <span>List</span>
+                        </div>
+                        <div class="menu_action" data-action="column_view">
+                            <div class="icon">view_column</div>
+                            <span>Column</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="view1 flex y">
                 <div class="content_section">
                     <div class="content_topbar flex x">
-                        <div class="path_input fill flex x">
+                        <div class="path_input fill flex x" id="path_input">
                             <div class="icon">folder</div>
-                            <div>system/ozone/Settings/</div>
+                            <input id="path_input_element" type="text" value="system/ozone/Settings/"
+                                spellcheck="false" />
                         </div>
                         <div class="path_actions">path actions here</div>
                     </div>

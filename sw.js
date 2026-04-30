@@ -4,6 +4,8 @@ importScripts("scripts/utility.js")
 ensureRoot()
 
 const appParams = new Map()
+const pendingResponses = new Map()
+
 self.addEventListener("fetch", e => {
     const url = new URL(e.request.url)
 
@@ -24,7 +26,8 @@ self.addEventListener("fetch", e => {
 
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
-function buildInjectedScript(iconSvg = "") {
+
+function buildInjectedScript(appKey = "", iconSvg = "") {
     const loaderDiv = iconSvg
         ? `<div id="_app_loader"><div id="_app_loader_icon">${iconSvg}</div></div>`
         : ""
@@ -55,6 +58,9 @@ html.app-ready {overflow: auto;}
         _open.call(window, url, target || '_blank',
             features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
+    // App key embedded at page-generation time — never in the URL.
+    const __appKey = ${JSON.stringify(appKey)}
+
     class SWBridge {
         static #id = 0
         static #wait = new Map()
@@ -62,13 +68,11 @@ html.app-ready {overflow: auto;}
             return new Promise(async res => {
                 const id = ++this.#id
                 this.#wait.set(id, res)
-                
                 let controller = navigator.serviceWorker.controller
                 if (!controller) {
                     await navigator.serviceWorker.ready
                     controller = navigator.serviceWorker.controller
                 }
-                
                 controller?.postMessage({ type: "rpc", id, method, args })
             })
         }
@@ -101,37 +105,31 @@ html.app-ready {overflow: auto;}
         get(_, prop) {
             if (prop === "apps") return {
                 open: async (path, params, mode) => {
-    const result = await SWBridge.call("apps.open", path, params, mode)
+                    const result = await SWBridge.call("apps.open", path, params, mode)
 
-    if (typeof result === "string") {
-        window.open(result, "_blank", "noopener,noreferrer")
-        return null
-    }
- const screenWidth = window.screen.availWidth;
-                const screenHeight = window.screen.availHeight;
+                    if (typeof result === "string") {
+                        window.open(result, "_blank", "noopener,noreferrer")
+                        return null
+                    }
 
-                const maxWidth = screenWidth * 0.8;
-                const maxHeight = screenHeight * 0.8;
+                    const screenWidth = window.screen.availWidth
+                    const screenHeight = window.screen.availHeight
+                    const maxWidth = screenWidth * 0.8
+                    const maxHeight = screenHeight * 0.8
+                    let width = maxWidth
+                    let height = width * (6 / 9)
+                    if (height > maxHeight) { height = maxHeight; width = height * (9 / 6) }
+                    height = Math.min(height, maxHeight)
+                    width = Math.min(width, maxWidth)
+                    const left = Math.max(0, (screenWidth - width) / 2)
+                    const top = Math.max(0, (screenHeight - height) / 2)
 
-                let width = maxWidth;
-                let height = width * (6 / 9);
-
-                if (height > maxHeight) {
-                height = maxHeight;
-                width = height * (9 / 6);
-                }
-
-                height = Math.min(height, maxHeight);
-                width = Math.min(width, maxWidth);
-
-                const left = Math.max(0, (screenWidth - width) / 2);
-                const top = Math.max(0, (screenHeight - height) / 2);
-
-                window.open(
-                    result.url,
-                    "_blank",
-                    \`popup=yes,width=\${Math.floor(width)},height=\${Math.floor(height)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`
-                );
+                    // FIX (doc1 bug): popup was never captured, so pollClose could never detect close
+                    const popup = _open.call(window,
+                        result.url,
+                        "_blank",
+                        \`popup=yes,width=\${Math.floor(width)},height=\${Math.floor(height)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`
+                    )
 
                     const pollClose = setInterval(async () => {
                         if (popup?.closed) {
@@ -146,21 +144,22 @@ html.app-ready {overflow: auto;}
                 },
 
                 respond: async (value) => {
-                    const params = await SWBridge.call(
-                        "apps.getParams",
-                        location.pathname.split("/").slice(2).join("/")
-                    )
-                    if (params.__responseId) {
+                    // Use embedded __appKey — no URL parsing, no one-time-claim destruction
+                    const params = await SWBridge.call("apps.getParams", __appKey)
+                    if (params?.__responseId) {
                         await SWBridge.call("apps.respond", params.__responseId, value)
+                        await new Promise(r => setTimeout(r, 50))
                         window.close()
                     }
                 }
             }
 
-            if (prop === "params") return SWBridge.call(
-                "apps.getParams",
-                location.pathname.split("/").slice(2).join("/")
-            )
+            if (prop === "params") {
+                if (!window.__appParamsCache) {
+                    window.__appParamsCache = SWBridge.call("apps.getParams", __appKey)
+                }
+                return window.__appParamsCache
+            }
 
             return createProxy(prop)
         }
@@ -230,6 +229,9 @@ async function route(request, parts) {
         body = new TextDecoder().decode(f.data)
     }
 
+    // Stable app key derived from path — no UUID, no URL param needed
+    const appKey = isShared ? "" : parts[0] + "/" + parts[1]
+
     let iconSvg = ""
     if (!isShared) {
         const manifestPath = APPS_PREFIX + parts[0] + "/" + parts[1] + "/manifest.json"
@@ -242,7 +244,7 @@ async function route(request, parts) {
         }
     }
 
-  const { head, loaderDiv } = buildInjectedScript(iconSvg)
+    const { head, loaderDiv } = buildInjectedScript(appKey, iconSvg)
 
     const headIdx = body.indexOf("</head>")
     let html = headIdx === -1
@@ -287,8 +289,6 @@ function mime(p) {
     return MIME_MAP[ext] || "application/octet-stream"
 }
 
-const pendingResponses = new Map()
-
 const rpc = {
     files: {
         read: readFile,
@@ -321,10 +321,13 @@ const rpc = {
 
             const responseId = crypto.randomUUID()
             appParams.set(key, { ...params, __responseId: responseId })
-
             pendingResponses.set(responseId, { resolve: null, settled: false, value: undefined })
-
             return { url, responseId, popup: true }
+        },
+
+        getParams(path) {
+            const key = path.replace(/^\/+|\/+$/g, "")
+            return appParams.get(key) || {}
         },
 
         waitForResponse(responseId) {
@@ -362,17 +365,16 @@ const rpc = {
         notifyPopupClosed(responseId) {
             const entry = pendingResponses.get(responseId)
             if (!entry || entry.settled) return
-            entry.resolve?.(null) ?? (() => {
-                entry.settled = true
-                entry.value = null
-            })()
-            pendingResponses.delete(responseId)
-        },
-        getParams(path) {
-            const key = path.replace(/^\/+|\/+$/g, "")
-            return appParams.get(key) || {}
+            // Grace period: give a respond() call that's in-flight a chance to land first
+            setTimeout(() => {
+                const latest = pendingResponses.get(responseId)
+                if (!latest || latest.settled) return
+                latest.resolve?.(null)
+                pendingResponses.delete(responseId)
+            }, 100)
         }
     },
+
     settings
 }
 
@@ -385,24 +387,18 @@ self.addEventListener("message", async e => {
     }
 
     const fn = resolve(rpc, d.method)
-
     let result = null
 
     try {
-        if (fn)
-            result = await fn(...d.args)
-        else
-            console.warn(d.method, "is not a valid endpoint")
-    } catch (e) {
-        console.warn(e)
+        if (fn) result = await fn(...d.args)
+        else console.warn(d.method, "is not a valid endpoint")
+    } catch (err) {
+        console.warn(err)
     }
 
-    e.source.postMessage({
-        type: "rpc-res",
-        id: d.id,
-        result
-    })
+    e.source.postMessage({ type: "rpc-res", id: d.id, result })
 })
+
 async function openFromSW(path, params = {}) {
     const key = path.replace(/\/+$/, "")
     appParams.set(key, params)
@@ -419,10 +415,5 @@ async function openFromSW(path, params = {}) {
     return url
 }
 
-self.addEventListener("install", () => {
-    self.skipWaiting()
-})
-
-self.addEventListener("activate", e => {
-    e.waitUntil(clients.claim())
-})
+self.addEventListener("install", () => self.skipWaiting())
+self.addEventListener("activate", e => e.waitUntil(clients.claim()))

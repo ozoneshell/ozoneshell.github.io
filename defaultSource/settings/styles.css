@@ -1,55 +1,9 @@
-:root {
-    --one: 25, 25, 26;
-    --two: 35, 36, 37;
-    --three: 47, 49, 49;
-    --four: 60, 60, 60;
-    --five: 140, 143, 141;
-
-    --highone: 4, 76, 117;
-    --highlight: 165, 195, 249;
-    --highlighttext: 15, 50, 110;
-
-    --highdark: 15, 50, 110;
-    --hightext: 191, 229, 254;
-
-    --text: 240, 240, 240;
-}
-
-body {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    background-color: rgb(var(--one));
-    color: rgb(var(--text));
-    font-family: "Google Sans",
-        sans-serif;
-}
-.flex {
-    display: flex;
-
-    &.y {
-        flex-direction: column;
-    }
-
-    &.x {
-        flex-direction: row;
-    }
-
-    &>.fill {
-        flex: 1;
-    }
-
-    &>.fit {
-        width: fit-content;
-    }
-}
-
 .sidebar {
-    background-color: rgb(var(--two));
+    background-color: var(--two);
     height: calc(100vh - 1em);
     padding: .5em;
     min-width: 290px;
-    border-right: 1px solid rgb(var(--three));
+    border-right: 1px solid var(--three);
 
     &>.button {
         padding: 1em;
@@ -70,30 +24,14 @@ body {
         }
 
         &.active {
-            background-color: rgb(var(--highone));
-            color: rgb(var(--hightext));
+            background-color: var(--highone);
+            color: var(--hightext);
         }
 
         &>.fill {
             flex: 1;
         }
     }
-}
-
-@font-face {
-    font-family: 'Material Symbols Rounded';
-    font-style: normal;
-    src: url("sharedAssets/icons.woff2") format('woff2');
-}
-
-@font-face {
-    font-family: "Google Sans";
-    font-style: normal;
-    src: url("sharedAssets/google_sans.ttf") format('truetype');
-}
-
-.icon {
-    font-family: 'Material Symbols Rounded';
 }
 
 .settings_section {
@@ -122,7 +60,7 @@ body {
 
         &>.setting_unit {
             display: flex;
-            background-color: rgb(var(--two));
+            background-color: var(--two);
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
@@ -144,9 +82,9 @@ body {
     width: 3em;
     height: 1.5em;
     border-radius: 2em;
-    border: 2px solid rgb(var(--five));
+    border: 2px solid var(--five);
     position: relative;
-    background: linear-gradient(to left, rgb(var(--highlight)) 50%, rgb(var(--three)) 50%);
+    background: linear-gradient(to left, var(--highlight) 50%, var(--three) 50%);
     background-size: 200% 100%;
     background-position: left;
     transition: s cubic-bezier(0.075,0.82,0.165,1);
@@ -160,23 +98,23 @@ body {
     width: 1em;
     height: 1em;
     border-radius: 1em;
-    background: rgb(var(--five));
+    background: var(--five);
     transition: .5s cubic-bezier(0.075,0.82,0.165,1);
 }
 
 .setting_toggle.checked {
-    border-color: rgb(var(--highlight));
+    border-color: var(--highlight);
     background-position: right;
 }
 
 .setting_toggle.checked::after {
     left: 1.75em;
-    background: rgb(var(--highdark));
+    background: var(--highdark);
 }
 
 .setting_button {
-    background-color: rgb(var(--highlight));
-    color: rgb(var(--highdark));
+    background-color: var(--highlight);
+    color: var(--highdark);
     padding: .7em 1.1em;
     font: inherit;
     font-size: .9em;
@@ -197,11 +135,11 @@ body {
         display: flex;
         flex-direction: row;
         justify-content: space-between;
-        background-color: rgb(var(--three));
+        background-color: var(--three);
 
         &.active {
-            background: rgb(var(--highone));
-            color: rgb(var(--hightext));
+            background: var(--highone);
+            color: var(--hightext);
         }
     }
 
@@ -220,7 +158,7 @@ body {
 
         &>.item {
             padding: .7em 1.1em;
-            background-color: rgb(var(--three));
+            background-color: var(--three);
             border-radius: 0;
 
             &:hover {

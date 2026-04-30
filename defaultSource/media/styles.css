@@ -1,79 +1,10 @@
-:root {
-    --one: 25, 25, 26;
-    --two: 35, 36, 37;
-    --three: 47, 49, 49;
-    --four: 60, 60, 60;
-    --five: 140, 143, 141;
-
-    --highone: 4, 76, 117;
-    --highlight: 165, 195, 249;
-    --highlighttext: 15, 50, 110;
-
-    --highdark: 15, 50, 110;
-    --hightext: 191, 229, 254;
-
-    --text: 240, 240, 240;
-}
-
-body {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    background-color: rgb(var(--one));
-    color: rgb(var(--text));
-    font-family: "Google Sans",
-        sans-serif;
-    height: 100vh;
-}
-
-.flex {
-    display: flex;
-
-    &.y {
-        flex-direction: column;
-    }
-
-    &.x {
-        flex-direction: row;
-    }
-
-    &>.fill {
-        flex: 1;
-    }
-
-    &>.fit {
-        width: fit-content;
-    }
-}
-
 .sidebar {
-    background-color: rgb(var(--two));
+    background-color: var(--two);
     height: calc(100vh - 1em);
     padding: .5em;
     min-width: 290px;
-    border-right: 1px solid rgb(var(--three));
+    border-right: 1px solid var(--three);
 
-}
-
-@font-face {
-    font-family: 'Material Symbols Rounded';
-    font-style: normal;
-    src: url("sharedAssets/icons.woff2") format('woff2');
-}
-
-@font-face {
-    font-family: "Google Sans";
-    font-style: normal;
-    src: url("sharedAssets/google_sans.ttf") format('truetype');
-}
-
-.icon {
-    font-family: 'Material Symbols Rounded';
-    font-variation-settings:
-        'FILL' 1,
-        'wght' 400,
-        'GRAD' 0,
-        'opsz' 24
 }
 
 .main_container {
@@ -94,7 +25,7 @@ body {
         padding: .5em .8em;
         display: flex;
         flex-direction: row;
-        background-color: rgb(var(--two));
+        background-color: var(--two);
         gap: .5em;
         border-radius: .5em;
     }
@@ -105,7 +36,7 @@ video {
     font-family: 'Courier New', Courier, monospace;
     background-color: black;
     outline: 0;
-    color: rgb(var(--text));
+    color: var(--text);
     border: 0;
     border-radius: .5em;
     height: calc(100vh - 3.3em);

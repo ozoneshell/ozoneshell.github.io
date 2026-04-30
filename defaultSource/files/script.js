@@ -1,5 +1,6 @@
 var state = {
-    "mode": "browser"
+    "mode": "browser",
+    "currentView": "grid"
 }
 
 async function buildTree(dir) {
@@ -60,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sessionDeterminer = (await api.params)?.type;
     if (sessionDeterminer == "file_selector") {
         state.mode = sessionDeterminer;
+        document.title = "Choose files - Files"
     } else if (sessionDeterminer == "folder_selector") {
         state.mode = sessionDeterminer;
     }
@@ -84,6 +86,48 @@ document.addEventListener("DOMContentLoaded", async () => {
         })
     });
     openTopBarPage("folder");
+
+    (() => {
+        const container = document.getElementById('path_input');
+        const input = document.getElementById('path_input_element');
+
+        let originalPath = input.value;
+
+        function setActive(state) {
+            container.classList.toggle('input_active', state);
+        }
+
+        container.addEventListener('click', () => {
+            input.focus();
+        });
+
+        input.addEventListener('focus', () => {
+            originalPath = input.value;
+            setActive(true);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const newPath = input.value.trim();
+
+                try {
+                    renderFiles(newPath);
+                    originalPath = newPath;
+                    input.blur();
+                } catch {
+                    input.value = originalPath;
+                    input.blur();
+                }
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            if (input.value.trim() !== originalPath) {
+                input.value = originalPath;
+            }
+            setActive(false);
+        });
+    })();
 })
 
 function openTopBarPage(pageId) {
@@ -109,11 +153,24 @@ var fileTypeIcons = {
     "png": "image",
     "jpeg": "image",
     "webp": "image",
+    "tiff": "image",
+    "bmp": "image",
     "jpg": "image",
+    "gif": "image",
     "mp3": "music_note",
+    "flac": "music_note",
+    "opus": "music_note",
+    "midi": "music_note",
+    "aac": "music_note",
+    "m4a": "music_note",
+    "ogg": "music_note",
+    "wav": "music_note",
     "mp4": "video_file",
     "mpeg": "video_file",
     "webm": "video_file",
+    "mov": "video_file",
+    "avi": "video_file",
+    "wmv": "video_file",
     "mkv": "video_file"
 }
 
@@ -187,6 +244,8 @@ async function renderFiles(path) {
     for (const item of items) {
         new FileItem(item, container)
     }
+    container.dataset.view = state.currentView
+    document.querySelector("#path_input_element").value = path
     openTopBarPage("folder");
 }
 const input = document.getElementById("filePicker")
@@ -220,5 +279,19 @@ const actionMap = {
     delete_file: () => deleteFile(),
 
     import_file: () => importFiles(),
-    import_folder: () => importFolder()
+    import_folder: () => importFolder(),
+
+    grid_view: () => setView("grid"),
+    list_view: () => setView("list"),
+    column_view: () => setView("column"),
+}
+
+function setView(view) {
+    state.currentView = view
+    const container = document.querySelector("#filesList")
+    if (container) container.dataset.view = view
+
+    document.querySelectorAll('[data-barpageid="view"] .menu_action').forEach(el => {
+        el.classList.toggle("active", el.dataset.action === `${view}_view`)
+    })
 }

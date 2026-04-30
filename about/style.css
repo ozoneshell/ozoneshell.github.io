@@ -39,8 +39,8 @@ body {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    background-color: rgb(var(--one));
-    color: rgb(var(--text));
+    background-color: var(--one);
+    color: var(--text);
     font-size: 1.2em;
     font-family: "Google Sans",
         sans-serif;
@@ -65,22 +65,22 @@ h1,
 
 a {
     font-size: 1em;
-    color: rgb(var(--text));
+    color: var(--text);
     padding: .8em 1.5em;
     border-radius: 2em;
     text-decoration: none;
 
     &.target_action {
-        background-color: rgb(var(--highone));
+        background-color: var(--highone);
 
         &:hover {
-            background-color: rgb(var(--highone));
+            background-color: var(--highone);
             filter: brightness(80%);
         }
     }
 
     &:hover {
-        background-color: rgb(var(--two));
+        background-color: var(--two);
     }
 }
 
@@ -93,7 +93,7 @@ a {
     position: sticky;
     top: 0;
     z-index: 99;
-    background: linear-gradient(180deg, rgb(var(--one)), transparent);
+    background: linear-gradient(180deg, var(--one), transparent);
 
     &>.menu {
         display: flex;
@@ -127,7 +127,7 @@ a {
     }
 
     &>button {
-        background-color: rgb(var(--text));
+        background-color: var(--text);
         padding: 1em 2em;
         font: inherit;
         display: flex;
@@ -175,7 +175,7 @@ a {
         }
 
         &>.label {
-            color: rgb(var(--highlight));
+            color: var(--highlight);
         }
     }
 
@@ -210,7 +210,7 @@ a {
         width: 16em;
         border-radius: 1em;
         overflow: hidden;
-        background-color: rgb(var(--two));
+        background-color: var(--two);
 
         &>.data {
             padding: 1em;
