@@ -9,6 +9,7 @@ class ToggleSetting {
     toggle() {
         this.checked = !this.checked
         this.el.classList.toggle("checked", this.checked)
+        this.onChange?.(this.getValue())
     }
     getValue() {
         return this.checked
@@ -26,6 +27,7 @@ class ButtonSetting {
         this.callback = callback
         el.addEventListener("click", e => {
             if (this.callback) this.callback(e, this)
+            this.onChange?.(null)
         })
     }
     getValue() {
@@ -64,6 +66,7 @@ class DropdownSetting {
         this.value = v
         this.text.textContent = v
         this.close()
+        this.onChange?.(this.getValue())
     }
     getValue() {
         return this.value
@@ -73,8 +76,31 @@ class DropdownSetting {
     }
 }
 
-const settings = {}
+class InputSetting {
+    constructor(el, callback) {
+        this.el = el
+        this.key = el.dataset.setting
+        this.value = el.value
+        this.callback = callback
 
+        el.addEventListener("input", e => {
+            this.value = el.value
+            this.callback?.(e, this)
+            this.onChange?.(this.getValue())
+        })
+    }
+
+    getValue() {
+        return this.value
+    }
+
+    setValue(v) {
+        this.value = v ?? ""
+        this.el.value = this.value
+    }
+}
+
+const settings = {}
 document.querySelectorAll("[data-setting]").forEach(el => {
     let instance = null
 
@@ -86,10 +112,23 @@ document.querySelectorAll("[data-setting]").forEach(el => {
         instance = new DropdownSetting(el)
     }
 
-    if (instance) settings[instance.key] = instance
-});
+    if (instance) {
+        instance.onChange = async value => {
+            await api.settings.set(instance.key, value)
+        }
 
-document.addEventListener("DOMContentLoaded", async () => {
-    const f = await api.readFile("/system/ozone/Settings/index.html")
-    console.log(f)
+        settings[instance.key] = instance
+    }
 })
+
+async function loadSettings() {
+    const data = await api.settings.get("all")
+
+    Object.entries(settings).forEach(([key, instance]) => {
+        if (data[key] !== undefined && instance.setValue) {
+            instance.setValue(data[key])
+        }
+    })
+}
+
+loadSettings()

@@ -1,7 +1,16 @@
 var state = {
-    "mode": "browser",
-    "currentView": "grid"
-}
+    mode: "browser",
+    currentView: "grid",
+    path: "downloads",
+
+    get chosen_path() {
+        const el = document.querySelector(".selected");
+        if (el && el.dataset.path) {
+            return el.dataset.path;
+        }
+        return this.path;
+    }
+};
 
 async function buildTree(dir) {
     const entries = await api.files.list(dir)
@@ -31,18 +40,33 @@ function normalize(node) {
     }
 }
 function render(node, parent, depth = 0) {
-    const el = document.createElement("div")
-    el.className = "tree-node"
-    const subel = document.createElement("div");
-    subel.className = "subel";
-    subel.innerText = node.name;
-    el.appendChild(subel);
-    el.dataset.path = node.path
-    el.style.setProperty("--depth", depth)
-    parent.appendChild(el)
+    const wrapper = document.createElement("div")
+    wrapper.className = "tree-node"
+    wrapper.style.setProperty("--depth", depth)
+
+    wrapper.dataset.path = node.path
+
+    const header = document.createElement("div")
+    header.className = "subel"
+    header.innerText = node.name
+
+    const childrenContainer = document.createElement("div")
+    childrenContainer.className = "children"
+
+    wrapper.appendChild(header)
+    wrapper.appendChild(childrenContainer)
+    parent.appendChild(wrapper)
 
     if (node.children?.length) {
-        for (const c of node.children) render(c, parent, depth + 1)
+        wrapper.classList.add("has-children")
+
+        header.addEventListener("click", () => {
+            wrapper.classList.toggle("collapsed")
+        })
+
+        for (const c of node.children) {
+            render(c, childrenContainer, depth + 1)
+        }
     }
 }
 document.addEventListener("DOMContentLoaded", async () => {
@@ -66,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         state.mode = sessionDeterminer;
     }
 
-    renderFiles("/");
+    renderFiles();
 
     const btns = document.querySelectorAll('[data-openbarpage]')
     const pages = document.querySelectorAll('.menu_bar .page')
@@ -184,6 +208,7 @@ class FileItem {
         this.item = item
         this.el = document.createElement("div")
         this.el.className = "singular_file"
+        this.el.dataset.path = item.path;
 
         const fileName = item.path.split("/").pop()
 
@@ -235,9 +260,10 @@ class FileItem {
     }
 }
 
-async function renderFiles(path) {
+async function renderFiles(path = state.path) {
     const container = document.querySelector("#filesList")
     container.innerHTML = ""
+    state.path = path;
 
     const items = await api.files.list(path)
 
@@ -268,15 +294,24 @@ document.addEventListener("click", e => {
 })
 
 const actionMap = {
-    go_parent: () => navigateToParent(),
-    rename_folder: () => renameFolder(),
-    delete_folder: () => deleteFolder(),
+    go_parent: () => {
+        const parts = state.path.split('/').filter(Boolean);
+        state.path = parts.slice(0, -1).join('/');
+        renderFiles();
+    },
+    delete_folder: async () => {
+        await api.files.remove(state.chosen_path)
+        renderFiles();
+        render();
+    },
 
-    open_file: () => openFile(),
-    open_with: () => openWith(),
-    export_file: () => exportFile(),
-    rename_file: () => renameFile(),
-    delete_file: () => deleteFile(),
+    open_file: () => {
+        api.files.open(state.chosen_path)
+    },
+    delete_file: async () => {
+        await api.files.remove(state.chosen_path)
+        renderFiles();
+    },
 
     import_file: () => importFiles(),
     import_folder: () => importFolder(),
@@ -284,6 +319,12 @@ const actionMap = {
     grid_view: () => setView("grid"),
     list_view: () => setView("list"),
     column_view: () => setView("column"),
+
+    // to be implemented
+    rename_folder: () => { },
+    open_with: () => openWith(),
+    export_file: () => exportFile(),
+    rename_file: () => renameFile(),
 }
 
 function setView(view) {

@@ -51,7 +51,7 @@
     background: linear-gradient(to left, var(--highlight) 50%, var(--three) 50%);
     background-size: 200% 100%;
     background-position: left;
-    transition: s cubic-bezier(0.075,0.82,0.165,1);
+    transition: s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
 .setting_toggle::after {
@@ -63,7 +63,7 @@
     height: 1em;
     border-radius: 1em;
     background: var(--five);
-    transition: .5s cubic-bezier(0.075,0.82,0.165,1);
+    transition: .5s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
 .setting_toggle.checked {
@@ -84,6 +84,27 @@
     font-size: .9em;
     border: 0;
     border-radius: 1.5em;
+}
+
+.setting_input {
+    padding: .8em 0.5em;
+    font: inherit;
+    font-size: .9em;
+    border: 0;
+    border-radius: .5em;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    background-color: var(--one);
+    color: inherit;
+    text-align: center;
+    min-width: 0;
+    width: 8em;
+    outline: none;
+
+    &:focus {
+        box-shadow: 0 5px 0 -3px var(--highlight);
+    }
 }
 
 .setting_dropdown {

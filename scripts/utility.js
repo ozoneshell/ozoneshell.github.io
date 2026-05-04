@@ -37,37 +37,37 @@ function resolvePath(path) {
 }
 
 async function readJSON(path) {
-  path = resolvePath(path)
-  if (!(await exists(path))) return {}
-  const file = await readFile(path)
-  if (!file?.data) return {}
-  const text = new TextDecoder().decode(file.data)
-  return JSON.parse(text || "{}")
+    path = resolvePath(path)
+    if (!(await exists(path))) return {}
+    const file = await readFile(path)
+    if (!file?.data) return {}
+    const text = new TextDecoder().decode(file.data)
+    return JSON.parse(text || "{}")
 }
 async function writeJSON(path, data) {
-  path = norm(path)
-  const dirPath = parentOf(path)
+    path = norm(path)
+    const dirPath = parentOf(path)
 
-  if (dirPath) {
-    await mkdirp(dirPath)
-  }
+    if (dirPath) {
+        await mkdirp(dirPath)
+    }
 
-  await writeFile(path, JSON.stringify(data, null, 2))
+    await writeFile(path, JSON.stringify(data, null, 2))
 }
 
 var settings = {
-    set: async function (key, value, path) {
+    set: async function (key, value, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
         data[key] = value
         await writeJSON(file, data)
     },
-    get: async function (key, path) {
+    get: async function (key, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
         return (key == "all") ? data : data[key];
     },
-    rem: async function (key, path) {
+    rem: async function (key, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
         delete data[key]
@@ -77,8 +77,29 @@ var settings = {
 
 async function openFile(path) {
     const fileExt = getExtension(path);
-    let appTag = (await settings.get("FileBindings"))[fileExt][0];
+    let appTag = (await settings.get("FileBindings"))?.[fileExt]?.[0];
     if (appTag) {
-        openFromSW(appTag, {"file": path})
+        openFromSW(appTag, { "file": path })
+    } else {
+        await sysDialog({
+            message: `No installed application can handle '.${fileExt}' files. Please install an app that supports it from the app store.`
+        })
     }
+}
+
+async function sysDialog({ message = "", type = "alert", defaultValue = "" }) {
+    const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+    })
+
+    const target = clientsList.find(c => c.focused) ?? clientsList[0]
+    if (!target) return
+
+    target.postMessage({
+        type: "sys-dialog",
+        dialogType: type,
+        message,
+        defaultValue
+    })
 }

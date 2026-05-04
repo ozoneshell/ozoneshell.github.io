@@ -1,11 +1,8 @@
 importScripts("scripts/vfs.js")
 importScripts("scripts/utility.js")
+importScripts("scripts/sw-api.js")
 
 ensureRoot()
-
-const appParams = new Map()
-const pendingResponses = new Map()
-const liveReloadBases = new Map()
 
 self.addEventListener("fetch", e => {
     const url = new URL(e.request.url)
@@ -77,15 +74,19 @@ html.app-ready {overflow: auto;}
             })
         }
         static init() {
-            navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
-                if (d?.type === "rpc-res") {
-                    SWBridge.#wait.get(d.id)?.(d.result)
-                    SWBridge.#wait.delete(d.id)
-                } else if (d?.type === "from-sw" && d.action === "apps.open") {
-                    try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
-                    catch { console.error("Invalid URL from SW:", d.url) }
-                }
-            })
+           navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
+    if (d?.type === "rpc-res") {
+        SWBridge.#wait.get(d.id)?.(d.result)
+        SWBridge.#wait.delete(d.id)
+
+    } else if (d?.type === "from-sw" && d.action === "apps.open") {
+        try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
+        catch { console.error("Invalid URL from SW:", d.url) }
+
+    } else if (d?.type === "sys-dialog") {
+        handleSystemDialog(d)
+    }
+})
         }
     }
     SWBridge.init()
@@ -162,6 +163,29 @@ html.app-ready {overflow: auto;}
             return createProxy(prop)
         }
     })
+       function handleSystemDialog({ dialogType, message, defaultValue }) {
+    switch (dialogType) {
+        case "alert":
+            alert(message)
+            break
+
+        case "confirm":
+            const result = confirm(message)
+            navigator.serviceWorker.controller?.postMessage({
+                type: "dialog-response",
+                value: result
+            })
+            break
+
+        case "prompt":
+            const value = prompt(message, defaultValue ?? "")
+            navigator.serviceWorker.controller?.postMessage({
+                type: "dialog-response",
+                value
+            })
+            break
+    }
+}
 })()
 </script>`,
         loaderDiv
@@ -295,114 +319,7 @@ function mime(p) {
     return MIME_MAP[ext] || "application/octet-stream"
 }
 
-const rpc = {
-    files: {
-        read: readFile,
-        write: writeFile,
-        list,
-        exists,
-        mkdir,
-        mkdirp,
-        remove,
-        open: openFile
-    },
-    utility: {
-        getMime: mime
-    },
-    system: {
-        ensureRoot,
-        parentOf,
-        norm
-    },
-
-    apps: {
-        async open(path, params = {}, mode) {
-            const key = path.replace(/\/+$/, "")
-            const url = `/apps/${key}/`
-
-            if (mode !== "popup") {
-                appParams.set(key, { ...params })
-                return url
-            }
-
-            const responseId = crypto.randomUUID()
-            appParams.set(key, { ...params, __responseId: responseId })
-            pendingResponses.set(responseId, { resolve: null, settled: false, value: undefined })
-            return { url, responseId, popup: true }
-        },
-
-        getParams(path) {
-            const key = path.replace(/^\/+|\/+$/g, "")
-            return appParams.get(key) || {}
-        },
-
-        waitForResponse(responseId) {
-            return new Promise(resolve => {
-                const entry = pendingResponses.get(responseId)
-                if (!entry) return resolve(null)
-                if (entry.settled) return resolve(entry.value)
-
-                const timer = setTimeout(() => {
-                    entry.settled = true
-                    entry.value = null
-                    pendingResponses.delete(responseId)
-                    resolve(null)
-                }, 5 * 60 * 1000)
-
-                entry.resolve = (val) => {
-                    clearTimeout(timer)
-                    entry.settled = true
-                    entry.value = val
-                    pendingResponses.delete(responseId)
-                    resolve(val)
-                }
-            })
-        },
-
-        respond(responseId, value) {
-            const entry = pendingResponses.get(responseId)
-            if (entry?.resolve) entry.resolve(value)
-            else if (entry) {
-                entry.settled = true
-                entry.value = value
-            }
-        },
-
-        notifyPopupClosed(responseId) {
-            const entry = pendingResponses.get(responseId)
-            if (!entry || entry.settled) return
-            setTimeout(() => {
-                const latest = pendingResponses.get(responseId)
-                if (!latest || latest.settled) return
-                latest.resolve?.(null)
-                pendingResponses.delete(responseId)
-            }, 100)
-        }
-    },
-
-    settings
-}
-
-self.addEventListener("message", async e => {
-    const d = e.data
-    if (d?.type !== "rpc") return
-
-    function resolve(obj, path) {
-        return path.split(".").reduce((o, k) => o?.[k], obj)
-    }
-
-    const fn = resolve(rpc, d.method)
-    let result = null
-
-    try {
-        if (fn) result = await fn(...d.args)
-        else console.warn(d.method, "is not a valid endpoint")
-    } catch (err) {
-        console.warn(err)
-    }
-
-    e.source.postMessage({ type: "rpc-res", id: d.id, result })
-})
+self.addEventListener("message", handleRpcMessage)
 
 async function openFromSW(path, params = {}) {
     const key = path.replace(/\/+$/, "")

@@ -197,30 +197,65 @@
     padding: 1em;
     background-color: var(--one);
     overflow: auto;
-    max-height: 50vh;
+    flex: 1;
     border-radius: .5em;
+    max-width: calc(var(--std-sidebar-width) - 2em);
+    overflow: auto;
+}
+.tree-node {
+    --indent: 2px;
+    padding-left: calc(var(--depth) * var(--indent));
 }
 
-.tree-node {
-    --indent: 16px;
-    padding-left: calc(var(--depth)*var(--indent) + 8px);
-    background-image: repeating-linear-gradient(to right,
-            #444 0,
-            #444 1px,
-            transparent 1px,
-            transparent var(--indent));
-    background-size: calc(var(--depth)*var(--indent)) 100%;
-    background-repeat: no-repeat;
-    padding-bottom: .3em;
-
-    & .subel {
-        padding: var(--btn-pad);
-        background: var(--three);
-        width: fit-content;
-        border-radius: .5em;
-        transform: translateX(-1em);
-        min-width: 6em;
+.tree-node .children {
+    margin-left: 3px;
+    padding-left: 5px;
+    position: relative;
+    &::after {
+        content: "";
+        height: calc(100% - 5px);
+        width: 1px;
+        position: absolute;
+        background-color: var(--three);
+        top: -10px;
+        left: -3px;
     }
+}
+
+.tree-node.collapsed > .children {
+    display: none;
+}
+
+.tree-node.has-children:not(.collapsed)>.subel {
+    border-radius: .5em .5em .5em 0;
+} 
+
+.tree-node .subel {
+    padding: var(--btn-pad);
+    background: var(--three);
+    width: fit-content;
+    border-radius: .5em;
+    min-width: 6em;
+    cursor: pointer;
+    margin-bottom: .3em;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .3em;
+}
+.tree-node.has-children > .subel::before {
+    content: "keyboard_arrow_down ";
+    font-family: 'Material Symbols Rounded';
+    display: inline-block;
+    font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+}
+
+.tree-node.collapsed > .subel::before {
+    transform: rotate(-90deg);
 }
 
 .path_input {
