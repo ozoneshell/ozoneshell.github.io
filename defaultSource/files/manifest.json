@@ -1,4 +1,5 @@
 {
+    "short_name": "Files",
     "name": "Files",
     "author": "ozone",
     "description": "An app to manage Ozone Shell settings.",
@@ -8,10 +9,13 @@
         "files"
     ],
     "landing": "index.html",
+    "start_url": ".",
     "sources": [
         "script.js",
+        "sub/index.html",
         "styles.css"
     ],
     "version": "0.1",
-    "handle": "file_manager"
+    "handle": "file_manager",
+    "display": "standalone"
 }

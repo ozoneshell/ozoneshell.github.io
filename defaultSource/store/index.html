@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store</title>
+    <link rel="stylesheet" href="sharedAssets/ozone_gui.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="flex x">
+        <div class="flex fit y sidebar">
+            <div class="label">Apps</div>
+            <div class="button active">
+                <div class="icon">award_star</div>
+                <div class="fill">Featured</div>
+            </div>
+            <div class="button">
+                <div class="icon">cloud_sync</div>
+                <div class="fill">My Apps</div>
+            </div>
+        </div>
+        <div class="flex fill y" style="width: 0;">
+            <div class="settings_section fill">
+                <div class="label">Quick Sideload</div>
+                <div class="inputs">
+                    <input type="text" placeholder="Type or paste a URL...">
+                    <input class="button" type="button" data-setting="buttonSetting" value="Install">
+                </div>
+                <div class="label">Ozone Basics</div>
+                <div class="app_grid">
+                    <div class="app_unit">
+                        <div class="app_header">
+                            <div class="icon">camera</div>
+                            <div class="name">Ozone Camera</div>
+                        </div>
+                        <div class="app_desc">Basic camera app with Ozone integration.</div>
+                    </div>
+                    <div class="app_unit">
+                        <div class="app_header">
+                            <div class="icon">music_note</div>
+                            <div class="name">MusicPLR</div>
+                        </div>
+                        <div class="app_desc">A powerful music player app.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

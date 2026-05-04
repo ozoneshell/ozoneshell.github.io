@@ -1,13 +1,13 @@
 @font-face {
-  font-family: 'Material Symbols Rounded';
-  font-style: normal;
-  src: url("icons.woff2") format('woff2');
+    font-family: 'Material Symbols Rounded';
+    font-style: normal;
+    src: url("icons.woff2") format('woff2');
 }
 
 @font-face {
-  font-family: "Google Sans";
-  font-style: normal;
-  src: url("google_sans.ttf") format('truetype');
+    font-family: "Google Sans";
+    font-style: normal;
+    src: url("google_sans.ttf") format('truetype');
 }
 
 :root {
@@ -24,6 +24,10 @@
     --hightext: rgb(191, 229, 254);
 
     --text: rgb(240, 240, 240);
+
+    --std-sidebar-width: 250px;
+    --std-content-width: 1000px;
+    --btn-pad: .5em .7em;
 }
 
 * {
@@ -77,24 +81,72 @@ body {
     height: 100vh;
 }
 
+.sidebar {
+    background-color: var(--two);
+    height: calc(100vh - 1em);
+    padding: .5em;
+    min-width: var(--std-sidebar-width);
+    border-right: 1px solid var(--three);
+    gap: .3em;
+
+    &>.button {
+        padding: var(--btn-pad);
+        display: flex;
+        flex-direction: row;
+        gap: .5em;
+        cursor: pointer;
+        border-radius: 5em;
+        background-color: inherit;
+        align-items: center;
+
+        &:hover {
+            filter: brightness(120%);
+        }
+
+        &>.icon {
+            font-size: 20px;
+        }
+
+        &.active {
+            background-color: var(--highone);
+            color: var(--hightext);
+        }
+
+        &>.fill {
+            flex: 1;
+        }
+    }
+
+    &>.label {
+        padding: var(--btn-pad);
+
+        &:not(:first-child) {
+            border-top: 1px solid var(--four);
+            padding-top: 1em;
+            margin-top: 1em;
+        }
+    }
+}
+
+
 .flex {
-  display: flex;
+    display: flex;
 
-  &.y {
-    flex-direction: column;
-  }
+    &.y {
+        flex-direction: column;
+    }
 
-  &.x {
-    flex-direction: row;
-  }
+    &.x {
+        flex-direction: row;
+    }
 
-  &>.fill {
-    flex: 1;
-  }
+    &>.fill {
+        flex: 1;
+    }
 
-  &>.fit {
-    width: fit-content;
-  }
+    &>.fit {
+        width: fit-content;
+    }
 }
 
 .icon {

@@ -5,6 +5,7 @@ ensureRoot()
 
 const appParams = new Map()
 const pendingResponses = new Map()
+const liveReloadBases = new Map()
 
 self.addEventListener("fetch", e => {
     const url = new URL(e.request.url)
@@ -58,7 +59,6 @@ html.app-ready {overflow: auto;}
         _open.call(window, url, target || '_blank',
             features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
-    // App key embedded at page-generation time — never in the URL.
     const __appKey = ${JSON.stringify(appKey)}
 
     class SWBridge {
@@ -124,7 +124,6 @@ html.app-ready {overflow: auto;}
                     const left = Math.max(0, (screenWidth - width) / 2)
                     const top = Math.max(0, (screenHeight - height) / 2)
 
-                    // FIX (doc1 bug): popup was never captured, so pollClose could never detect close
                     const popup = _open.call(window,
                         result.url,
                         "_blank",
@@ -144,7 +143,6 @@ html.app-ready {overflow: auto;}
                 },
 
                 respond: async (value) => {
-                    // Use embedded __appKey — no URL parsing, no one-time-claim destruction
                     const params = await SWBridge.call("apps.getParams", __appKey)
                     if (params?.__responseId) {
                         await SWBridge.call("apps.respond", params.__responseId, value)
@@ -181,6 +179,8 @@ async function route(request, parts) {
         : null
 
     const isShared = parts[2] === "sharedAssets"
+    const appKey = isShared ? "" : parts[0] + "/" + parts[1]
+
     const vfsPath = isShared
         ? SHARED_PREFIX + (parts.length > 3 ? parts.slice(3).join("/") : "index.html")
         : APPS_PREFIX + parts[0] + "/" + parts[1] + "/" + (parts.length > 2 ? parts.slice(2).join("/") : "index.html")
@@ -192,12 +192,17 @@ async function route(request, parts) {
             return new Response("Forbidden", { status: 403 })
     }
 
+    const liveBase = liveReloadBases.get(appKey)
+    const assetPath = parts.length > 2 ? parts.slice(2).join("/") : "index.html"
+    const resolvedLiveUrl = liveReloadUrl
+        ?? (liveBase ? liveBase.replace(/\/[^/]*$/, "/") + assetPath : null)
+
     let contentType, body
 
-    if (liveReloadUrl) {
+    if (resolvedLiveUrl) {
         let res
         try {
-            res = await fetch(liveReloadUrl)
+            res = await fetch(resolvedLiveUrl)
             if (!res.ok) return new Response("LiveReload fetch failed", { status: 502 })
         } catch {
             return new Response("LiveReload error", { status: 500 })
@@ -214,6 +219,10 @@ async function route(request, parts) {
         }
 
         body = await res.text()
+
+        if (liveReloadUrl && !isShared) {
+            liveReloadBases.set(appKey, liveReloadUrl)
+        }
     } else {
         const f = await readFile(vfsPath)
         if (!f || f.type !== "file") return new Response("Not found", { status: 404 })
@@ -228,9 +237,6 @@ async function route(request, parts) {
 
         body = new TextDecoder().decode(f.data)
     }
-
-    // Stable app key derived from path — no UUID, no URL param needed
-    const appKey = isShared ? "" : parts[0] + "/" + parts[1]
 
     let iconSvg = ""
     if (!isShared) {
@@ -365,7 +371,6 @@ const rpc = {
         notifyPopupClosed(responseId) {
             const entry = pendingResponses.get(responseId)
             if (!entry || entry.settled) return
-            // Grace period: give a respond() call that's in-flight a chance to land first
             setTimeout(() => {
                 const latest = pendingResponses.get(responseId)
                 if (!latest || latest.settled) return

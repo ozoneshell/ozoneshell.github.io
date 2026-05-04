@@ -22,7 +22,7 @@
     }
 
     & .menu_action {
-        padding: .5em .8em;
+        padding: var(--btn-pad);
         display: flex;
         flex-direction: row;
         background-color: var(--two);
