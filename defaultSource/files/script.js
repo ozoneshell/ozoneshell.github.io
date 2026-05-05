@@ -60,8 +60,14 @@ function render(node, parent, depth = 0) {
     if (node.children?.length) {
         wrapper.classList.add("has-children")
 
-        header.addEventListener("click", () => {
-            wrapper.classList.toggle("collapsed")
+        header.addEventListener("click", (e) => {
+            const rect = header.getBoundingClientRect()
+
+            const clickX = e.clientX - rect.left
+
+            if (clickX <= 40) {
+                wrapper.classList.toggle("collapsed")
+            }
         })
 
         for (const c of node.children) {

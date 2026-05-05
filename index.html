@@ -742,7 +742,7 @@
                 for (const ext of data.capabilities) {
                     FileBindings[ext] = [...new Set([...(FileBindings[ext] ?? []), key])]
                 }
-                settings.set("FileBindings", FileBindings)
+                await settings.set("FileBindings", FileBindings)
             }
             await Promise.all(
                 sources.map(async file => {

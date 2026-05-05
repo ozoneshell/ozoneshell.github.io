@@ -24,7 +24,7 @@ const rpc = {
 
     apps: {
         async open(path, params = {}, mode) {
-            const key = path.replace(/\/+$/, "")
+            const key = path.replace(/^\/+|\/+$/g, "")
             const url = `/apps/${key}/`
 
             if (mode !== "popup") {
@@ -112,7 +112,7 @@ async function handleRpcMessage(e) {
 }
 
 async function openFromSW(path, params = {}) {
-    const key = path.replace(/\/+$/, "")
+    const key = path.replace(/^\/+|\/+$/g, "")
     appParams.set(key, params)
     const url = `/apps/${key}/`
 

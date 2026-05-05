@@ -28,14 +28,18 @@ function getExtension(s) {
 
     return res;
 }
-
 function resolvePath(path) {
+    if (typeof path !== "string") {
+        return "/system/settings/general.json"
+    }
+
     if (!path) return "/system/settings/general.json"
+
     if (path.startsWith("/system/settings/")) return path
     if (path.startsWith("system/settings/")) return "/" + path
+
     return "/system/settings/" + path.replace(/^\//, "")
 }
-
 async function readJSON(path) {
     path = resolvePath(path)
     if (!(await exists(path))) return {}
@@ -45,9 +49,9 @@ async function readJSON(path) {
     return JSON.parse(text || "{}")
 }
 async function writeJSON(path, data) {
-    path = norm(path)
-    const dirPath = parentOf(path)
+    path = resolvePath(path)
 
+    const dirPath = parentOf(path)
     if (dirPath) {
         await mkdirp(dirPath)
     }
