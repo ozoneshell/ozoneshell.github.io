@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Files",
+    "author": "ozone",
+    "icon": "folder",
+    "description": "An app to manage files in the Ozone VFS",
+    "cover":"https://static.vecteezy.com/system/resources/thumbnails/006/229/256/small/workers-searching-file-employee-uses-magnifying-glass-file-binders-yellow-folder-with-documents-file-manager-data-storage-and-indexing-files-search-vector.jpg",
+    "src": "files"
+  },
+  {
+    "name": "Settings",
+    "author": "ozone",
+    "icon": "settings",
+    "description": "An app to manage files in the Ozone VFS",
+    "cover":"https://images.pexels.com/photos/3582392/pexels-photo-3582392.jpeg?cs=srgb&dl=pexels-ibrahimboran-3582392.jpg&fm=jpg",
+    "src": "settings"
+  }
+]

@@ -2,6 +2,9 @@
     display: flex;
     align-items: center;
     flex-direction: column;
+    flex: 1;
+    height: 0;
+    overflow-y: auto;
 
     &>.label {
         width: calc(100% - 4em);
@@ -38,10 +41,22 @@
                 justify-content: center;
                 align-items: center;
                 font-size: 1.2em;
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
 
                 &>.icon {
                     font-size: 2em;
                 }
+                &>* {
+                    z-index: 99;
+                    text-shadow: 0 0 1em black;
+                }
+            }
+
+            &>.app_desc {
+                box-shadow: 0 0 5em black;
+                flex: 1;
             }
 
             &:hover {
@@ -177,3 +192,5 @@ input.button {
         color: inherit;
     }
 }
+
+#installer_page {}

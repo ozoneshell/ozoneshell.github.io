@@ -23,7 +23,7 @@
             </div>
         </div>
         <div class="flex fill y" style="width: 0;">
-            <div class="settings_section fill">
+            <div class="settings_section fill" id="front_page">
                 <div class="label">Quick Sideload</div>
                 <div class="inputs">
                     <input type="text" placeholder="Type or paste a URL...">
@@ -46,6 +46,38 @@
                         <div class="app_desc">A powerful music player app.</div>
                     </div>
                 </div>
+                <div class="label">Ozone Defaults</div>
+                <div class="app_grid" id="default_apps_grid">
+                    <div class="app_unit">
+                        <div class="app_header" background>
+                            <div class="icon">camera</div>
+                            <div class="name">Ozone Camera</div>
+                        </div>
+                        <div class="app_desc">Basic camera app with Ozone integration.</div>
+                    </div>
+                    <div class="app_unit">
+                        <div class="app_header">
+                            <div class="icon">music_note</div>
+                            <div class="name">MusicPLR</div>
+                        </div>
+                        <div class="app_desc">A powerful music player app.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings_section fill" id="installer_page">
+                <div class="installer_header">
+                    <div class="data">
+                        <img src="" id="app_installer_icon" alt="">
+                        <div id="app_installer_name">MusicPLR</div>
+                    </div>
+                    <div class="inputs" id="installer_buttons">
+                        <input class="button" type="button" data-setting="buttonSetting" value="Open">
+                        <input class="button" type="button" data-setting="buttonSetting" value="Update">
+                    </div>
+                </div>
+                <div class="label">Description</div>
+                <p id="app_desc">A powerful music player app.</p>
             </div>
         </div>
     </div>
