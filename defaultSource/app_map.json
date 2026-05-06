@@ -4,15 +4,39 @@
     "author": "ozone",
     "icon": "folder",
     "description": "An app to manage files in the Ozone VFS",
-    "cover":"https://static.vecteezy.com/system/resources/thumbnails/006/229/256/small/workers-searching-file-employee-uses-magnifying-glass-file-binders-yellow-folder-with-documents-file-manager-data-storage-and-indexing-files-search-vector.jpg",
+    "cover": "https://images.unsplash.com/photo-1544396821-4dd40b938ad3?q=80&w=1000&auto=format&fit=crop",
     "src": "files"
   },
   {
     "name": "Settings",
     "author": "ozone",
     "icon": "settings",
-    "description": "An app to manage files in the Ozone VFS",
-    "cover":"https://images.pexels.com/photos/3582392/pexels-photo-3582392.jpeg?cs=srgb&dl=pexels-ibrahimboran-3582392.jpg&fm=jpg",
+    "description": "An app to manage settings.",
+    "cover": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop",
     "src": "settings"
+  },
+  {
+    "name": "Menu",
+    "author": "ozone",
+    "icon": "apps",
+    "description": "An app to launch other apps.",
+    "cover": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1000&auto=format&fit=crop",
+    "src": "menu"
+  },
+  {
+    "name": "Media",
+    "author": "ozone",
+    "icon": "slow_motion_video",
+    "description": "An app to play media files",
+    "cover": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000&auto=format&fit=crop",
+    "src": "media_player"
+  },
+  {
+    "name": "Text",
+    "author": "ozone",
+    "icon": "text_fields_alt",
+    "description": "An app to manage files in the Ozone VFS",
+    "cover": "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=1000&auto=format&fit=crop",
+    "src": "text_editor"
   }
 ]

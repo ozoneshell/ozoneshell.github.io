@@ -13,7 +13,7 @@
     <div class="flex x">
         <div class="flex fit y sidebar">
             <div class="label">Apps</div>
-            <div class="button active">
+            <div class="button active" onclick="switchSection('front_page')">
                 <div class="icon">award_star</div>
                 <div class="fill">Featured</div>
             </div>
@@ -21,58 +21,34 @@
                 <div class="icon">cloud_sync</div>
                 <div class="fill">My Apps</div>
             </div>
+            <div class="label">Settings</div>
+            <div class="button">
+                <div class="icon">home_storage</div>
+                <div class="fill">Edit Providers</div>
+            </div>
         </div>
         <div class="flex fill y" style="width: 0;">
-            <div class="settings_section fill" id="front_page">
+            <div class="settings_section fill active" id="front_page">
                 <div class="label">Quick Sideload</div>
                 <div class="inputs">
                     <input type="text" placeholder="Type or paste a URL...">
                     <input class="button" type="button" data-setting="buttonSetting" value="Install">
                 </div>
                 <div class="label">Ozone Basics</div>
-                <div class="app_grid">
-                    <div class="app_unit">
-                        <div class="app_header">
-                            <div class="icon">camera</div>
-                            <div class="name">Ozone Camera</div>
-                        </div>
-                        <div class="app_desc">Basic camera app with Ozone integration.</div>
-                    </div>
-                    <div class="app_unit">
-                        <div class="app_header">
-                            <div class="icon">music_note</div>
-                            <div class="name">MusicPLR</div>
-                        </div>
-                        <div class="app_desc">A powerful music player app.</div>
-                    </div>
-                </div>
+                <p>Ozone basics store is on development.</p>
                 <div class="label">Ozone Defaults</div>
                 <div class="app_grid" id="default_apps_grid">
-                    <div class="app_unit">
-                        <div class="app_header" background>
-                            <div class="icon">camera</div>
-                            <div class="name">Ozone Camera</div>
-                        </div>
-                        <div class="app_desc">Basic camera app with Ozone integration.</div>
-                    </div>
-                    <div class="app_unit">
-                        <div class="app_header">
-                            <div class="icon">music_note</div>
-                            <div class="name">MusicPLR</div>
-                        </div>
-                        <div class="app_desc">A powerful music player app.</div>
-                    </div>
                 </div>
             </div>
 
             <div class="settings_section fill" id="installer_page">
+                    <img id="app_installer_cover" src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop">
                 <div class="installer_header">
                     <div class="data">
-                        <img src="" id="app_installer_icon" alt="">
                         <div id="app_installer_name">MusicPLR</div>
                     </div>
                     <div class="inputs" id="installer_buttons">
-                        <input class="button" type="button" data-setting="buttonSetting" value="Open">
+                        <input class="button secondary" type="button" data-setting="buttonSetting" value="Open">
                         <input class="button" type="button" data-setting="buttonSetting" value="Update">
                     </div>
                 </div>
