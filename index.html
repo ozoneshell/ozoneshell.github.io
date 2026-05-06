@@ -711,7 +711,7 @@
             log("Ready!")
         }
         async function copySharedAssets() {
-            const sharedAssets = ["google_sans.ttf", "icons.woff2", "ozone_gui.css"];
+            const sharedAssets = ["google_sans.ttf", "icons.woff2", "ozone_gui.css", "ozone_std_util.js"];
             const base = `/system/sharedAssets`;
             await Promise.all(
                 sharedAssets.map(async file => {
