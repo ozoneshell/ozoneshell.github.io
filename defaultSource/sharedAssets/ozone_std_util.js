@@ -82,19 +82,22 @@ class SystemDialog {
             el.appendChild(img);
           }
 
+          const data = document.createElement('div');
+          data.classList.add('sd-list-data');
           if (item.text) {
             const text = document.createElement('div');
             text.classList.add('sd-list-text');
             text.textContent = item.text;
-            el.appendChild(text);
+            data.appendChild(text);
           }
 
           if (item.description) {
             const desc = document.createElement('div');
             desc.classList.add('sd-list-description');
             desc.textContent = item.description;
-            el.appendChild(desc);
+            data.appendChild(desc);
           }
+          el.appendChild(data);
 
           el.addEventListener('click', () => {
             el.classList.toggle('selected');
@@ -193,3 +196,157 @@ class SystemDialog {
 
 
 // context menu
+
+class SystemContextMenu {
+  static instance = new SystemContextMenu();
+
+  constructor() {
+    this.menus = [];
+    this.currentMenu = null;
+    this.boundContextHandler = this.#handleContextMenu.bind(this);
+    this.boundClickHandler = this.#handleOutsideClick.bind(this);
+    this.boundKeyHandler = this.#handleKeydown.bind(this);
+
+    document.addEventListener('contextmenu', this.boundContextHandler);
+    document.addEventListener('click', this.boundClickHandler);
+    document.addEventListener('keydown', this.boundKeyHandler);
+    // window.addEventListener('blur', () => this.close());
+  }
+
+  static init(configs = []) {
+    this.instance.register(configs);
+  }
+
+  register(configs = []) {
+    this.menus.push(...configs);
+  }
+
+  close() {
+    if (!this.currentMenu) return;
+
+    this.currentMenu.remove();
+    this.currentMenu = null;
+  }
+
+  #handleContextMenu(e) {
+    const match = this.#findMatchingContext(e.target);
+
+    if (!match) {
+      this.close();
+      return;
+    }
+
+    e.preventDefault();
+
+    this.close();
+
+    const menu = this.#createMenu(match.actions, match.element);
+
+    document.body.appendChild(menu);
+
+    this.currentMenu = menu;
+
+    const { innerWidth, innerHeight } = window;
+    const rect = menu.getBoundingClientRect();
+
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + rect.width > innerWidth) {
+      x = innerWidth - rect.width - 8;
+    }
+
+    if (y + rect.height > innerHeight) {
+      y = innerHeight - rect.height - 8;
+    }
+
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+  }
+
+  #handleOutsideClick(e) {
+    if (!this.currentMenu) return;
+
+    if (!this.currentMenu.contains(e.target)) {
+      this.close();
+    }
+  }
+
+  #handleKeydown(e) {
+    if (e.key === 'Escape') {
+      this.close();
+    }
+  }
+
+  #findMatchingContext(target) {
+    for (const menu of this.menus) {
+      const selector = `[data-context="${menu['data-context']}"]`;
+      const element = target.closest(selector);
+
+      if (element) {
+        return {
+          ...menu,
+          element
+        };
+      }
+    }
+
+    return null;
+  }
+
+  #createMenu(actions, contextElement) {
+    const menu = document.createElement('div');
+    menu.classList.add('scm-menu');
+
+    actions.forEach(action => {
+      if (typeof action === 'object' && Array.isArray(action.actions)) {
+        const submenuWrapper = document.createElement('div');
+        submenuWrapper.classList.add('scm-submenu-wrapper');
+
+        const submenuButton = document.createElement('button');
+        submenuButton.classList.add('scm-item', 'scm-submenu-button');
+        submenuButton.textContent = action.label;
+
+        const submenu = this.#createMenu(action.actions, contextElement);
+        submenu.classList.add('scm-submenu');
+
+        submenuWrapper.append(submenuButton, submenu);
+
+        submenuButton.addEventListener('mouseenter', () => {
+          submenu.style.display = 'flex';
+
+          const rect = submenu.getBoundingClientRect();
+
+          if (rect.right > window.innerWidth) {
+            submenu.style.left = 'auto';
+            submenu.style.right = '100%';
+          }
+        });
+
+        submenuWrapper.addEventListener('mouseleave', () => {
+          submenu.style.display = 'none';
+        });
+
+        menu.appendChild(submenuWrapper);
+
+        return;
+      }
+
+      const item = document.createElement('button');
+      item.classList.add('scm-item');
+      item.textContent = action.label;
+
+      item.addEventListener('click', () => {
+        this.close();
+
+        if (typeof action.fn === 'function') {
+          action.fn(contextElement);
+        }
+      });
+
+      menu.appendChild(item);
+    });
+
+    return menu;
+  }
+}

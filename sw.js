@@ -4,6 +4,29 @@ importScripts("scripts/sw-api.js")
 
 ensureRoot()
 
+class LRU {
+    #max; #map
+    constructor(max) {
+        this.#max = max
+        this.#map = new Map()
+    }
+    get(key) {
+        if (!this.#map.has(key)) return undefined
+        const val = this.#map.get(key)
+        this.#map.delete(key)
+        this.#map.set(key, val)
+        return val
+    }
+    set(key, val) {
+        if (this.#map.has(key)) this.#map.delete(key)
+        else if (this.#map.size >= this.#max) this.#map.delete(this.#map.keys().next().value)
+        this.#map.set(key, val)
+    }
+    has(key) { return this.#map.has(key) }
+    delete(key) { return this.#map.delete(key) }
+    get size() { return this.#map.size }
+}
+
 self.addEventListener("install", () => self.skipWaiting())
 self.addEventListener("activate", e => e.waitUntil(clients.claim()))
 self.addEventListener("message", handleRpcMessage)
@@ -24,13 +47,13 @@ self.addEventListener("fetch", e => {
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
 
-const manifestCache = new Map()
+const manifestCache = new LRU(30)
 
-const vfsCache = new Map()
+const vfsCache = new LRU(100)
 
-const injectedScriptCache = new Map()
+const injectedScriptCache = new LRU(30)
 
-const liveReloadCache = new Map()
+const liveReloadCache = new LRU(20)
 
 async function cachedReadFile(vfsPath) {
     if (vfsCache.has(vfsPath)) {
@@ -48,7 +71,7 @@ async function revalidateVfs(vfsPath) {
     else if (fresh === null || fresh?.type !== "file") vfsCache.delete(vfsPath)
 }
 
-const vfsBlobCache = new Map()
+const vfsBlobCache = new LRU(20)
 
 async function cachedStreamFile(vfsPath) {
     if (vfsBlobCache.has(vfsPath)) {
@@ -276,7 +299,7 @@ html.app-ready {overflow: auto;}
     return result
 }
 
-const liveReloadBodyCache = new Map() 
+const liveReloadBodyCache = new LRU(20) 
 
 const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }

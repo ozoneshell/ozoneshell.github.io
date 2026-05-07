@@ -231,4 +231,85 @@ dialog.sd-dialog {
     display: flex;
     flex-direction: row;
     gap: .5em;
+    padding: var(--btn-pad);
+    align-items: center;
+    border-radius: .5em;
+
+    &.selected {
+        background: var(--highone);
+
+        &::after {
+            content: "check";
+            padding: .5em;
+            font-family: 'Material Symbols Rounded';
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24
+        }
+    }
+
+    &>.sd-list-data {
+        flex: 1;
+    }
+
+    & .sd-list-icon {
+        width: 25px;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+    }
+
+    & .sd-list-description {
+        opacity: .7;
+        font-size: .8em;
+    }
+}
+
+.scm-menu {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    padding: 4px;
+    border-radius: 8px;
+    z-index: 9999;
+    background: var(--two);
+}
+
+.scm-item {
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: var(--btn-pad);
+    cursor: pointer;
+    border-radius: .5em;
+    width: 100%;
+    color: var(--text);
+    font: inherit;
+}
+
+.scm-item:hover {
+    background: var(--three);
+}
+
+.scm-submenu-wrapper {
+    position: relative;
+
+    &>.scm-item::after {
+        content: "chevron_forward";
+        padding: .5em;
+        font-family: 'Material Symbols Rounded';
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        position: absolute;
+        right: 0;
+        top: 0;
+    }
+}
+
+.scm-submenu {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    display: none;
 }

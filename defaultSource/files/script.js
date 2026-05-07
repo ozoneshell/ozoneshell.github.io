@@ -215,6 +215,7 @@ class FileItem {
         this.el = document.createElement("div")
         this.el.className = "singular_file"
         this.el.dataset.path = item.path;
+        this.el.dataset.context = "file";
 
         const fileName = item.path.split("/").pop()
 

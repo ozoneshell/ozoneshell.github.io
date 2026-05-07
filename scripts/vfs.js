@@ -136,8 +136,6 @@ async function opfsDelete(dirHandle, filename) {
   } catch { }
 }
 
-
-// Initialises all dir handles and reads root meta in one parallel batch.
 let _dirs = null
 let _initPromise = null
 
@@ -159,8 +157,6 @@ async function dirs() {
   return _initPromise
 }
 
-
-// nodes
 const NODE_CACHE = new Map()
 const NODE_CACHE_MAX = 2000
 
@@ -222,8 +218,6 @@ async function listChildren(parentId) {
   return nodes.filter(Boolean)
 }
 
-
-// content
 async function writeBlob(data) {
   const { content } = await dirs()
 
@@ -291,8 +285,6 @@ async function streamBlob(contentId) {
   return opfsFile(content, contentId)
 }
 
-
-// root
 let _rootId = null
 
 async function ensureRoot() {
@@ -324,8 +316,6 @@ async function _initVfs() {
   await ensureRoot()
 }
 
-
-// path resolver
 async function vfsresolvePath(path) {
   path = norm(path)
   const rootId = await ensureRoot()
@@ -354,8 +344,6 @@ async function resolveParent(path) {
   return { parentNode, name }
 }
 
-
-// Exposed API
 async function exists(path) {
   return !!(await vfsresolvePath(norm(path)))
 }
