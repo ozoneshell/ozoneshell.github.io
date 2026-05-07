@@ -25,37 +25,31 @@ const rpc = {
     apps: {
         async open(path, params = {}, mode) {
             const key = path.replace(/^\/+|\/+$/g, "")
-            const url = `/apps/${key}/`
+            const hasParams = Object.keys(params).length > 0 || mode === "popup"
+            const paramsId = hasParams ? crypto.randomUUID() : null
+            const url = `/apps/${key}/${paramsId ? `?paramsId=${paramsId}` : ""}`
 
-            if (mode !== "popup") {
-                appParams.set(key, { ...params })
-                return url
+            if (paramsId) {
+                const storedParams = mode === "popup"
+                    ? { ...params, __responseId: crypto.randomUUID() }
+                    : { ...params }
+
+                appParams.set(paramsId, storedParams)
+
+                if (mode === "popup") {
+                    pendingResponses.set(storedParams.__responseId, { resolve: null, settled: false, value: undefined })
+                    return { url, responseId: storedParams.__responseId, popup: true }
+                }
             }
 
-            const responseId = crypto.randomUUID()
-            appParams.set(key, { ...params, __responseId: responseId })
-            const cache = await caches.open("app-params")
-            await cache.put(
-                `/~params/${key}`,
-                new Response(JSON.stringify({ ...params, __responseId: responseId }))
-            )
-            pendingResponses.set(responseId, { resolve: null, settled: false, value: undefined })
-            return { url, responseId, popup: true }
+            return url
         },
 
-        async getParams(path) {
-            const key = path.replace(/^\/+|\/+$/g, "")
-            if (appParams.has(key)) return appParams.get(key)
-
-            const cache = await caches.open("app-params")
-            const res = await cache.match(`/~params/${key}`)
-            if (res) {
-                const val = await res.json()
-                appParams.set(key, val)
-                return val
-            }
-            return {}
+        getParams(paramsId) {
+            if (!paramsId) return {}
+            return appParams.get(paramsId) || {}
         },
+
         waitForResponse(responseId) {
             return new Promise(resolve => {
                 const entry = pendingResponses.get(responseId)
@@ -126,8 +120,10 @@ async function handleRpcMessage(e) {
 
 async function openFromSW(path, params = {}) {
     const key = path.replace(/^\/+|\/+$/g, "")
-    appParams.set(key, params)
-    const url = `/apps/${key}/`
+    const hasParams = Object.keys(params).length > 0
+    const paramsId = hasParams ? crypto.randomUUID() : null
+    if (paramsId) appParams.set(paramsId, { ...params })
+    const url = `/apps/${key}/${paramsId ? `?paramsId=${paramsId}` : ""}`
 
     const clientsList = await self.clients.matchAll({
         type: "window",

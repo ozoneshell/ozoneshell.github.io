@@ -24,27 +24,16 @@ self.addEventListener("fetch", e => {
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
 
-// ─── Caches ──────────────────────────────────────────────────────────────────
-
-// manifest: path → { value, revalidating }
 const manifestCache = new Map()
 
-// VFS file blobs: vfsPath → Blob
 const vfsCache = new Map()
 
-// Injected script strings: appKey|iconSvg → { head, loaderDiv }
 const injectedScriptCache = new Map()
 
-// Live-reload responses: url → Response (cloned)
 const liveReloadCache = new Map()
 
-/**
- * Read from vfsCache; on miss populate it, then trigger a background
- * revalidation so the next request always gets a fresh copy.
- */
 async function cachedReadFile(vfsPath) {
     if (vfsCache.has(vfsPath)) {
-        // Revalidate in the background — never blocks the response
         revalidateVfs(vfsPath)
         return vfsCache.get(vfsPath)
     }
@@ -59,10 +48,7 @@ async function revalidateVfs(vfsPath) {
     else if (fresh === null || fresh?.type !== "file") vfsCache.delete(vfsPath)
 }
 
-/**
- * Same stale-while-revalidate pattern for streamed (Blob) VFS reads.
- */
-const vfsBlobCache = new Map() // vfsPath → Blob
+const vfsBlobCache = new Map()
 
 async function cachedStreamFile(vfsPath) {
     if (vfsBlobCache.has(vfsPath)) {
@@ -80,16 +66,11 @@ async function revalidateVfsBlob(vfsPath) {
     else vfsBlobCache.delete(vfsPath)
 }
 
-/**
- * Manifest: stale-while-revalidate. Returns the cached value immediately,
- * kicks off a background fetch to keep it current.
- */
 async function getManifest(manifestPath) {
     if (!manifestPath) return null
 
     if (manifestCache.has(manifestPath)) {
         const entry = manifestCache.get(manifestPath)
-        // Only launch one revalidation at a time
         if (!entry.revalidating) {
             entry.revalidating = true
             revalidateManifest(manifestPath).finally(() => {
@@ -100,7 +81,6 @@ async function getManifest(manifestPath) {
         return entry.value
     }
 
-    // Cold path — must await
     const value = await fetchManifest(manifestPath)
     manifestCache.set(manifestPath, { value, revalidating: false })
     return value
@@ -123,12 +103,8 @@ async function revalidateManifest(manifestPath) {
     else manifestCache.set(manifestPath, { value: fresh, revalidating: false })
 }
 
-/**
- * Cache the injected <script>/<style> strings — they are pure functions of
- * (appKey, iconSvg) so they never go stale on their own.
- */
-function buildInjectedScript(appKey = "", iconSvg = "") {
-    const cacheKey = appKey + "\x00" + iconSvg
+function buildInjectedScript(iconSvg = "") {
+    const cacheKey = iconSvg
     if (injectedScriptCache.has(cacheKey)) return injectedScriptCache.get(cacheKey)
 
     const loaderDiv = iconSvg
@@ -161,7 +137,7 @@ html.app-ready {overflow: auto;}
         _open.call(window, url, target || '_blank',
             features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
-    const __appKey = ${JSON.stringify(appKey)}
+    const __paramsId = new URLSearchParams(location.search).get("paramsId") ?? ""
 
     class SWBridge {
         static #id = 0
@@ -249,7 +225,7 @@ html.app-ready {overflow: auto;}
                 },
 
                 respond: async (value) => {
-                    const params = await SWBridge.call("apps.getParams", __appKey)
+                    const params = await SWBridge.call("apps.getParams", __paramsId)
                     if (params?.__responseId) {
                         await SWBridge.call("apps.respond", params.__responseId, value)
                         await new Promise(r => setTimeout(r, 50))
@@ -258,12 +234,12 @@ html.app-ready {overflow: auto;}
                 }
             }
 
-            if (prop === "params") {
-                if (!window.__appParamsCache) {
-                    window.__appParamsCache = SWBridge.call("apps.getParams", __appKey)
+                if (prop === "params") {
+                    if (!window.__appParamsCache) {
+                        window.__appParamsCache = SWBridge.call("apps.getParams", __paramsId)
+                    }
+                    return window.__appParamsCache
                 }
-                return window.__appParamsCache
-            }
 
             return createProxy(prop)
         }
@@ -300,9 +276,7 @@ html.app-ready {overflow: auto;}
     return result
 }
 
-// ─── Live-reload cache ────────────────────────────────────────────────────────
-// Stores the last good Response body as an ArrayBuffer so it can be re-streamed.
-const liveReloadBodyCache = new Map()  // url → { buffer: ArrayBuffer, ct: string }
+const liveReloadBodyCache = new Map() 
 
 const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
@@ -368,7 +342,7 @@ async function route(request, parts) {
             ? manifest.icon
             : ""
 
-    const { head, loaderDiv } = buildInjectedScript(appKey, iconSvg)
+    const { head, loaderDiv } = buildInjectedScript(iconSvg)
 
     function createHtmlInjector(head, loaderDiv) {
         const encoder = new TextEncoder()
@@ -471,7 +445,6 @@ async function route(request, parts) {
     if (resolvedLiveUrl) {
         const cacheEntry = liveReloadBodyCache.get(resolvedLiveUrl)
 
-        // Fire a background revalidation regardless
         const networkFetch = fetch(resolvedLiveUrl)
             .then(async res => {
                 if (!res.ok) return
@@ -483,7 +456,6 @@ async function route(request, parts) {
             .catch(() => null)
 
         if (cacheEntry) {
-            // Serve stale immediately; revalidation runs in background
             const { buffer, ct } = cacheEntry
             const headers = new Headers({
                 "Content-Type": ct,
@@ -506,7 +478,6 @@ async function route(request, parts) {
             return new Response(stream, { headers })
         }
 
-        // Cold path: must await the network
         const res = await networkFetch.then(() => {
             const entry = liveReloadBodyCache.get(resolvedLiveUrl)
             return entry ?? null
@@ -534,7 +505,6 @@ async function route(request, parts) {
         return new Response(stream, { headers })
     }
 
-    // ── VFS path ──────────────────────────────────────────────────────────────
     const streamed = await cachedStreamFile(vfsPath)
 
     if (!streamed || streamed.type !== "file") {
