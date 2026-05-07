@@ -34,15 +34,28 @@ const rpc = {
 
             const responseId = crypto.randomUUID()
             appParams.set(key, { ...params, __responseId: responseId })
+            const cache = await caches.open("app-params")
+            await cache.put(
+                `/~params/${key}`,
+                new Response(JSON.stringify({ ...params, __responseId: responseId }))
+            )
             pendingResponses.set(responseId, { resolve: null, settled: false, value: undefined })
             return { url, responseId, popup: true }
         },
 
-        getParams(path) {
+        async getParams(path) {
             const key = path.replace(/^\/+|\/+$/g, "")
-            return appParams.get(key) || {}
-        },
+            if (appParams.has(key)) return appParams.get(key)
 
+            const cache = await caches.open("app-params")
+            const res = await cache.match(`/~params/${key}`)
+            if (res) {
+                const val = await res.json()
+                appParams.set(key, val)
+                return val
+            }
+            return {}
+        },
         waitForResponse(responseId) {
             return new Promise(resolve => {
                 const entry = pendingResponses.get(responseId)

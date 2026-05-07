@@ -52,6 +52,25 @@ function tryParseJSON(text) {
   try { return JSON.parse(text) } catch { return null }
 }
 
+function norm(p) {
+  if (!p) return "/"
+  p = p.replace(/\/+/g, "/")
+  if (!p.startsWith("/")) p = "/" + p
+  if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1)
+  return p
+}
+
+function parentOf(path) {
+  path = norm(path)
+  if (path === "/") return null
+  const idx = path.lastIndexOf("/")
+  return idx === 0 ? "/" : path.slice(0, idx)
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
+
 
 let _root = null
 async function opfsRoot() {
@@ -67,9 +86,21 @@ async function opfsDir(segments, create = false) {
   return cur
 }
 
+const _fhCache = new WeakMap()
+
+async function _fileHandle(dirHandle, filename, create = false) {
+  let byName = _fhCache.get(dirHandle)
+  if (!byName) { byName = new Map(); _fhCache.set(dirHandle, byName) }
+  const cached = byName.get(filename)
+  if (cached) return cached
+  const fh = await dirHandle.getFileHandle(filename, { create })
+  byName.set(filename, fh)
+  return fh
+}
+
 async function opfsRead(dirHandle, filename) {
   try {
-    const fh = await dirHandle.getFileHandle(filename)
+    const fh = await _fileHandle(dirHandle, filename)
     return await (await fh.getFile()).text()
   } catch {
     return null
@@ -77,14 +108,14 @@ async function opfsRead(dirHandle, filename) {
 }
 
 async function opfsWrite(dirHandle, filename, text) {
-  const fh = await dirHandle.getFileHandle(filename, { create: true })
+  const fh = await _fileHandle(dirHandle, filename, true)
   const w = await fh.createWritable()
   await w.write(text)
   await w.close()
 }
 
 async function opfsWriteBinary(dirHandle, filename, data) {
-  const fh = await dirHandle.getFileHandle(filename, { create: true })
+  const fh = await _fileHandle(dirHandle, filename, true)
   const w = await fh.createWritable()
   await w.write(data)
   await w.close()
@@ -92,38 +123,62 @@ async function opfsWriteBinary(dirHandle, filename, data) {
 
 async function opfsFile(dirHandle, filename) {
   try {
-    const fh = await dirHandle.getFileHandle(filename)
-    return await fh.getFile()
+    return await (await _fileHandle(dirHandle, filename)).getFile()
   } catch {
     return null
   }
 }
 
 async function opfsDelete(dirHandle, filename) {
-  try { await dirHandle.removeEntry(filename) } catch { }
+  try {
+    _fhCache.get(dirHandle)?.delete(filename)
+    await dirHandle.removeEntry(filename)
+  } catch { }
 }
 
 
+// Initialises all dir handles and reads root meta in one parallel batch.
 let _dirs = null
+let _initPromise = null
+
 async function dirs() {
   if (_dirs) return _dirs
-  const nodes = await opfsDir(["vfs", "nodes"], true)
-  const content = await opfsDir(["vfs", "content"], true)
-  const idx = await opfsDir(["vfs", "idx"], true)
-  const metaDir = await opfsDir(["vfs", "meta"], true)
-  _dirs = { nodes, content, idx, metaDir }
-  return _dirs
+  if (_initPromise) return _initPromise
+  _initPromise = (async () => {
+    const root = await opfsRoot()
+    const vfs = await root.getDirectoryHandle("vfs", { create: true })
+    const [nodes, content, idx, metaDir] = await Promise.all([
+      vfs.getDirectoryHandle("nodes",   { create: true }),
+      vfs.getDirectoryHandle("content", { create: true }),
+      vfs.getDirectoryHandle("idx",     { create: true }),
+      vfs.getDirectoryHandle("meta",    { create: true }),
+    ])
+    _dirs = { nodes, content, idx, metaDir }
+    return _dirs
+  })()
+  return _initPromise
 }
 
+
 // nodes
+const NODE_CACHE = new Map()
+const NODE_CACHE_MAX = 2000
+
 async function readNode(id) {
+  if (NODE_CACHE.has(id)) return NODE_CACHE.get(id)
   const { nodes } = await dirs()
   const text = await opfsRead(nodes, id)
-  return text ? tryParseJSON(text) : null
+  const node = text ? JSON.parse(text) : null
+  if (node) {
+    if (NODE_CACHE.size >= NODE_CACHE_MAX) NODE_CACHE.clear()
+    NODE_CACHE.set(id, node)
+  }
+  return node
 }
 
 async function writeNode(node) {
   const { nodes, idx } = await dirs()
+  NODE_CACHE.set(node.id, node)
   await opfsWrite(nodes, node.id, JSON.stringify(node))
   if (node.parent !== null) {
     await opfsWrite(idx, _idxKey(node.parent, node.name), node.id)
@@ -132,6 +187,7 @@ async function writeNode(node) {
 
 async function deleteNode(node) {
   const { nodes, idx } = await dirs()
+  NODE_CACHE.delete(node.id)
   await opfsDelete(nodes, node.id)
   if (node.parent !== null) {
     await opfsDelete(idx, _idxKey(node.parent, node.name))
@@ -152,18 +208,20 @@ async function lookupChild(parentId, name) {
 async function listChildren(parentId) {
   const { idx } = await dirs()
   const prefix = parentId + "_"
-  const children = []
+  const names = []
   for await (const [name] of idx) {
-    if (name.startsWith(prefix)) {
-      const nodeId = await opfsRead(idx, name)
-      if (nodeId) {
-        const node = await readNode(nodeId.trim())
-        if (node) children.push(node)
-      }
-    }
+    if (name.startsWith(prefix)) names.push(name)
   }
-  return children
+  const nodeIds = await Promise.all(names.map(n => opfsRead(idx, n)))
+  const nodes = await Promise.all(
+    nodeIds
+      .map(id => id?.trim())
+      .filter(Boolean)
+      .map(id => readNode(id))
+  )
+  return nodes.filter(Boolean)
 }
+
 
 // content
 async function writeBlob(data) {
@@ -192,7 +250,6 @@ async function writeBlob(data) {
   }
 
   const id = await sha1hex(buf)
-
   const existing = await opfsRead(content, id + ".rc")
   if (existing === null) {
     await opfsWriteBinary(content, id, buf)
@@ -201,7 +258,6 @@ async function writeBlob(data) {
     const rc = parseInt(existing, 10) || 0
     await opfsWrite(content, id + ".rc", String(rc + 1))
   }
-
   return id
 }
 
@@ -235,6 +291,7 @@ async function streamBlob(contentId) {
   return opfsFile(content, contentId)
 }
 
+
 // root
 let _rootId = null
 
@@ -262,24 +319,20 @@ async function ensureRoot() {
   return _rootId
 }
 
-// path resolver
-function norm(p) {
-  if (!p) return "/"
-  p = p.replace(/\/+/g, "/")
-  if (!p.startsWith("/")) p = "/" + p
-  if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1)
-  return p
+async function _initVfs() {
+  await dirs()
+  await ensureRoot()
 }
 
+
+// path resolver
 async function vfsresolvePath(path) {
   path = norm(path)
   const rootId = await ensureRoot()
-
   if (path === "/") return readNode(rootId)
 
   const parts = path.split("/").filter(Boolean)
   let curId = rootId
-
   for (const part of parts) {
     const child = await lookupChild(curId, part)
     if (!child) return null
@@ -301,19 +354,19 @@ async function resolveParent(path) {
   return { parentNode, name }
 }
 
+
 // Exposed API
+async function exists(path) {
+  return !!(await vfsresolvePath(norm(path)))
+}
+
 async function mkdir(path) {
   path = norm(path)
   await ensureRoot()
-
   if (await vfsresolvePath(path)) throw new Error(`Already exists: ${path}`)
   const { parentNode, name } = await resolveParent(path)
-
   const node = {
-    id: uid(),
-    name,
-    parent: parentNode.id,
-    type: "folder",
+    id: uid(), name, parent: parentNode.id, type: "folder",
     meta: { created: Date.now(), modified: Date.now() }
   }
   await writeNode(node)
@@ -323,10 +376,8 @@ async function mkdirp(path) {
   path = norm(path)
   if (path === "/") return
   await ensureRoot()
-
   const parts = path.split("/").filter(Boolean)
   let cur = "/"
-
   for (const part of parts) {
     const next = cur === "/" ? `/${part}` : `${cur}/${part}`
     const existing = await vfsresolvePath(next)
@@ -334,124 +385,88 @@ async function mkdirp(path) {
       if (existing.type !== "folder") throw new Error(`Not a directory: ${next}`)
     } else {
       const { parentNode } = await resolveParent(next)
-      const node = {
-        id: uid(),
-        name: part,
-        parent: parentNode.id,
-        type: "folder",
+      await writeNode({
+        id: uid(), name: part, parent: parentNode.id, type: "folder",
         meta: { created: Date.now(), modified: Date.now() }
-      }
-      await writeNode(node)
+      })
     }
     cur = next
   }
 }
 
 async function writeFile(path, data) {
-  // creates parents automatically.
-  // content is only stored once per SHA-1.
   path = norm(path)
   await ensureRoot()
-
   const existing = await vfsresolvePath(path)
   if (existing?.type === "folder") throw new Error(`Is a directory: ${path}`)
-
   await mkdirp(path.split("/").slice(0, -1).join("/") || "/")
-
   const contentId = await writeBlob(data)
   const now = Date.now()
-
   if (existing) {
     if (existing.contentId && existing.contentId !== contentId) {
       await releaseBlob(existing.contentId)
     }
-    const updated = { ...existing, contentId, meta: { ...existing.meta, modified: now } }
-    await writeNode(updated)
+    await writeNode({ ...existing, contentId, meta: { ...existing.meta, modified: now } })
   } else {
     const { parentNode, name } = await resolveParent(path)
-    const node = {
-      id: uid(),
-      name,
-      parent: parentNode.id,
-      type: "file",
-      contentId,
+    await writeNode({
+      id: uid(), name, parent: parentNode.id, type: "file", contentId,
       meta: { created: now, modified: now }
-    }
-    await writeNode(node)
+    })
   }
 }
 
 async function readFile(path) {
-  // Returns { node, data: ArrayBuffer } or null if not found.
   path = norm(path)
   const node = await vfsresolvePath(path)
   if (!node || node.type !== "file") return null
-
   const data = await readBlob(node.contentId)
   if (data === null) return null
-
   return { ...node, data }
 }
 
-
 async function streamFile(path) {
-  // Returns { node, file: File }: caller can use file.stream() for zero-copy reads.
   path = norm(path)
   const node = await vfsresolvePath(path)
   if (!node || node.type !== "file") return null
-
   const file = await streamBlob(node.contentId)
   if (!file) return null
-
   return { ...node, file }
 }
 
 async function list(path = "/") {
-  // Returns array of node objects.
   path = norm(path)
   const node = await vfsresolvePath(path)
   if (!node || node.type !== "folder") return []
-
   const children = await listChildren(node.id)
-
   return children.map(child => ({
     ...child,
     path: path === "/" ? `/${child.name}` : `${path}/${child.name}`
   }))
 }
+
 async function move(srcPath, dstPath) {
-  // metadata move
   srcPath = norm(srcPath)
   dstPath = norm(dstPath)
   if (srcPath === "/") throw new Error("Cannot move root")
-
   const srcNode = await vfsresolvePath(srcPath)
   if (!srcNode) throw new Error(`Not found: ${srcPath}`)
-
   if (await vfsresolvePath(dstPath)) throw new Error(`Already exists: ${dstPath}`)
-
   if (srcNode.type === "folder" && dstPath.startsWith(srcPath + "/")) {
     throw new Error("Cannot move a folder into itself")
   }
-
   const { parentNode: dstParent, name: dstName } = await resolveParent(dstPath)
-
   const { idx } = await dirs()
   await opfsDelete(idx, _idxKey(srcNode.parent, srcNode.name))
-
-  const updated = { ...srcNode, name: dstName, parent: dstParent.id }
-  await writeNode(updated) 
+  await writeNode({ ...srcNode, name: dstName, parent: dstParent.id })
 }
 
 async function copy(srcPath, dstPath) {
-  // copy file or recursively a folder
   srcPath = norm(srcPath)
   dstPath = norm(dstPath)
   if (srcPath === "/") throw new Error("Cannot copy root")
-
   const srcNode = await vfsresolvePath(srcPath)
   if (!srcNode) throw new Error(`Not found: ${srcPath}`)
-
   await _copyNode(srcNode, dstPath)
 }
 
@@ -459,52 +474,35 @@ async function _copyNode(srcNode, dstPath) {
   if (await vfsresolvePath(dstPath)) throw new Error(`Already exists: ${dstPath}`)
   const { parentNode, name } = await resolveParent(dstPath)
   const now = Date.now()
-
   if (srcNode.type === "file") {
     await retainBlob(srcNode.contentId)
-    const newNode = {
-      id: uid(),
-      name,
-      parent: parentNode.id,
-      type: "file",
-      contentId: srcNode.contentId,
-      meta: { created: now, modified: now }
-    }
-    await writeNode(newNode)
+    await writeNode({
+      id: uid(), name, parent: parentNode.id, type: "file",
+      contentId: srcNode.contentId, meta: { created: now, modified: now }
+    })
   } else {
     const newFolder = {
-      id: uid(),
-      name,
-      parent: parentNode.id,
-      type: "folder",
+      id: uid(), name, parent: parentNode.id, type: "folder",
       meta: { created: now, modified: now }
     }
     await writeNode(newFolder)
-
     const children = await listChildren(srcNode.id)
-    for (const child of children) {
-      await _copyNode(child, `${dstPath}/${child.name}`)
-    }
+    await Promise.all(children.map(child => _copyNode(child, `${dstPath}/${child.name}`)))
   }
 }
 
 async function remove(path) {
-  // remove file or folder recursively
   path = norm(path)
   if (path === "/") throw new Error("Cannot remove root")
-
   const node = await vfsresolvePath(path)
   if (!node) return
-
   await _removeNode(node)
 }
 
 async function _removeNode(node) {
   if (node.type === "folder") {
     const children = await listChildren(node.id)
-    for (const child of children) {
-      await _removeNode(child)
-    }
+    await Promise.all(children.map(child => _removeNode(child)))
   } else {
     await releaseBlob(node.contentId)
   }

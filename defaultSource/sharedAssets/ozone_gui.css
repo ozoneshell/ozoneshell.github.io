@@ -164,9 +164,10 @@ dialog.sd-dialog {
     color: inherit;
     border: 0;
     border-radius: 1em;
-    padding: 1em;
+    padding: 1.5em;
     min-width: 19em;
     min-height: 10em;
+    outline: none;
     display: flex;
 
     &>.sd-container {

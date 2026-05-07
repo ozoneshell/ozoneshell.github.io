@@ -22,3 +22,6 @@ files app
 
 installer wizard
 - choose file system backend: OPFS, IndexedDB
+
+pending:
+tooltips, styling all the rest dialog types, context menu
