@@ -17,8 +17,6 @@
  *   { id, name, parent, type, contentId?, meta: { created, modified } }
  */
 
-//  helpers 
-
 const _reqp = r => new Promise((res, rej) => {
   r.onsuccess = e => res(e.target.result)
   r.onerror   = e => rej(e.target.error)
