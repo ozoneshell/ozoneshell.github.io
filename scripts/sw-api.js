@@ -10,6 +10,7 @@ export const rpc = {
     files: {
         read: readFile,
         write: writeFile,
+        stream: streamFile,
         list,
         exists,
         mkdir,
@@ -18,12 +19,12 @@ export const rpc = {
         open: openFile
     },
     utility: {
-        getMime: mimeFromPath
+        getMime: mimeFromPath,
+        norm
     },
     system: {
         ensureRoot,
-        parentOf,
-        norm
+        parentOf
     },
 
     apps: {

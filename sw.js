@@ -1,5 +1,5 @@
 import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
-import { handleRpcMessage, liveReloadBases, appParams, pendingResponses, rpc, openFromSW } from "./scripts/sw-api.js"
+import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
 import { mimeFromPath } from "./scripts/utility.js"
 
 (async () => {

@@ -1,4 +1,4 @@
-import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
+import { readFile, writeFile, list, exists, mkdirp, parentOf } from "/scripts/vfs.js"
 import { openFromSW } from "/scripts/sw-api.js"
 
 function mimeFromPath(path) {
