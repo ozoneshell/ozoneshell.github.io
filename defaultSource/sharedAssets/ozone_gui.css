@@ -169,6 +169,7 @@ dialog.sd-dialog {
     min-height: 10em;
     outline: none;
     display: flex;
+    max-width: 500px;
 
     &>.sd-container {
         flex: 1;
@@ -312,4 +313,38 @@ dialog.sd-dialog {
     top: 0;
     left: 100%;
     display: none;
+}
+
+.inputs {
+    display: flex;
+    background-color: var(--two);
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1em;
+    width: calc(100% - 6em);
+    border-radius: 1em;
+
+    &>input[type="text"] {
+        background-color: transparent;
+        border: none;
+        outline: 0;
+        font: inherit;
+        color: inherit;
+    }
+}
+
+input.button {
+    background-color: var(--highlight);
+    color: var(--highdark);
+    padding: .7em 1.1em;
+    font: inherit;
+    font-size: .9em;
+    border: 0;
+    border-radius: 1.5em;
+
+    &.secondary {
+        background-color: var(--highdark);
+        color: var(--hightext);
+    }
 }

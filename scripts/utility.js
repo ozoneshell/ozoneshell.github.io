@@ -1,7 +1,28 @@
+import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
+import { openFromSW } from "/scripts/sw-api.js"
+
 function mimeFromPath(path) {
+    const MIME_MAP = {
+        html: "text/html",
+        js: "application/javascript",
+        css: "text/css",
+        json: "application/json",
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        svg: "image/svg+xml",
+        woff2: "font/woff2",
+        ttf: "font/ttf",
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        txt: "text/plain"
+    }
     const i = path.lastIndexOf(".")
     if (i < 0) return "application/octet-stream"
-    return state.mimedb[path.slice(i + 1)] || "application/octet-stream"
+    return MIME_MAP[path.slice(i + 1)] || "application/octet-stream"
 }
 
 function getExtension(s) {
@@ -106,4 +127,15 @@ async function sysDialog({ message = "", type = "alert", defaultValue = "" }) {
         message,
         defaultValue
     })
+}
+
+export {
+    mimeFromPath,
+    getExtension,
+    resolvePath,
+    readJSON,
+    writeJSON,
+    settings,
+    openFile,
+    sysDialog
 }

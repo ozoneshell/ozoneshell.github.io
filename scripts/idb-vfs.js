@@ -470,3 +470,16 @@ async function _removeNode(node, nodes, content) {
   }
   await _deleteNode(node.id, nodes)
 }
+
+export {
+  exists,
+  mkdir,
+  mkdirp,
+  writeFile,
+  readFile,
+  streamFile,
+  list,
+  move,
+  copy,
+  remove
+}

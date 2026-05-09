@@ -60,18 +60,6 @@ function norm(p) {
   return p
 }
 
-function parentOf(path) {
-  path = norm(path)
-  if (path === "/") return null
-  const idx = path.lastIndexOf("/")
-  return idx === 0 ? "/" : path.slice(0, idx)
-}
-
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
-}
-
-
 let _root = null
 async function opfsRoot() {
   if (!_root) _root = await navigator.storage.getDirectory()
@@ -344,10 +332,6 @@ async function resolveParent(path) {
   return { parentNode, name }
 }
 
-async function exists(path) {
-  return !!(await vfsresolvePath(norm(path)))
-}
-
 async function mkdir(path) {
   path = norm(path)
   await ensureRoot()
@@ -495,4 +479,21 @@ async function _removeNode(node) {
     await releaseBlob(node.contentId)
   }
   await deleteNode(node)
+}
+
+export {
+  exists,
+  mkdir,
+  mkdirp,
+  writeFile,
+  readFile,
+  streamFile,
+  list,
+  move,
+  copy,
+  remove,
+  vfsresolvePath,
+  ensureRoot,
+  parentOf,
+  norm
 }

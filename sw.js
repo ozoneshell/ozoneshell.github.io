@@ -1,8 +1,10 @@
-importScripts("scripts/vfs.js")
-importScripts("scripts/utility.js")
-importScripts("scripts/sw-api.js")
+import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
+import { handleRpcMessage, liveReloadBases, appParams, pendingResponses, rpc, openFromSW } from "./scripts/sw-api.js"
+import { mimeFromPath } from "./scripts/utility.js"
 
-ensureRoot()
+(async () => {
+  await ensureRoot()
+})()
 
 class LRU {
     #max; #map
@@ -534,7 +536,7 @@ async function route(request, parts) {
         return new Response("Not found", { status: 404 })
     }
 
-    const contentType = mime(vfsPath)
+    const contentType = mimeFromPath(vfsPath)
 
     if (contentType !== "text/html") {
         return new Response(
@@ -560,48 +562,6 @@ async function route(request, parts) {
     })
 }
 
-const MIME_MAP = {
-    html: "text/html",
-    js: "application/javascript",
-    css: "text/css",
-    json: "application/json",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    svg: "image/svg+xml",
-    woff2: "font/woff2",
-    ttf: "font/ttf",
-    mp4: "video/mp4",
-    webm: "video/webm",
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    ogg: "audio/ogg",
-    txt: "text/plain"
-}
-
-function mime(p) {
-    const i = p.lastIndexOf(".")
-    const ext = i !== -1 ? p.slice(i + 1).toLowerCase() : ""
-    return MIME_MAP[ext] || "application/octet-stream"
-}
-
 self.addEventListener("message", handleRpcMessage)
-
-async function openFromSW(path, params = {}) {
-    const key = path.replace(/\/+$/, "")
-    appParams.set(key, params)
-    const url = `/apps/${key}/`
-
-    const clientsList = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true
-    })
-
-    const target = clientsList.find(c => c.focused) ?? clientsList[0]
-    if (target) target.postMessage({ type: "from-sw", action: "apps.open", url })
-
-    return url
-}
-
 self.addEventListener("install", () => self.skipWaiting())
 self.addEventListener("activate", e => e.waitUntil(clients.claim()))

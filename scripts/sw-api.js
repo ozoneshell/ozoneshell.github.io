@@ -1,8 +1,12 @@
-const appParams = new Map()
-const pendingResponses = new Map()
-const liveReloadBases = new Map()
 
-const rpc = {
+import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
+import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
+
+export const appParams = new Map()
+export const pendingResponses = new Map()
+export const liveReloadBases = new Map()
+
+export const rpc = {
     files: {
         read: readFile,
         write: writeFile,
@@ -14,7 +18,7 @@ const rpc = {
         open: openFile
     },
     utility: {
-        getMime: mime
+        getMime: mimeFromPath
     },
     system: {
         ensureRoot,
@@ -37,7 +41,11 @@ const rpc = {
                 appParams.set(paramsId, storedParams)
 
                 if (mode === "popup") {
-                    pendingResponses.set(storedParams.__responseId, { resolve: null, settled: false, value: undefined })
+                    pendingResponses.set(storedParams.__responseId, {
+                        resolve: null,
+                        settled: false,
+                        value: undefined
+                    })
                     return { url, responseId: storedParams.__responseId, popup: true }
                 }
             }
@@ -85,6 +93,7 @@ const rpc = {
         notifyPopupClosed(responseId) {
             const entry = pendingResponses.get(responseId)
             if (!entry || entry.settled) return
+
             setTimeout(() => {
                 const latest = pendingResponses.get(responseId)
                 if (!latest || latest.settled) return
@@ -97,11 +106,11 @@ const rpc = {
     settings
 }
 
-function resolveRpc(path) {
+export function resolveRpc(path) {
     return path.split(".").reduce((o, k) => o?.[k], rpc)
 }
 
-async function handleRpcMessage(e) {
+export async function handleRpcMessage(e) {
     const d = e.data
     if (d?.type !== "rpc") return
 
@@ -118,11 +127,13 @@ async function handleRpcMessage(e) {
     e.source.postMessage({ type: "rpc-res", id: d.id, result })
 }
 
-async function openFromSW(path, params = {}) {
+export async function openFromSW(path, params = {}) {
     const key = path.replace(/^\/+|\/+$/g, "")
     const hasParams = Object.keys(params).length > 0
     const paramsId = hasParams ? crypto.randomUUID() : null
+
     if (paramsId) appParams.set(paramsId, { ...params })
+
     const url = `/apps/${key}/${paramsId ? `?paramsId=${paramsId}` : ""}`
 
     const clientsList = await self.clients.matchAll({
@@ -131,7 +142,9 @@ async function openFromSW(path, params = {}) {
     })
 
     const target = clientsList.find(c => c.focused) ?? clientsList[0]
-    if (target) target.postMessage({ type: "from-sw", action: "apps.open", url })
+    if (target) {
+        target.postMessage({ type: "from-sw", action: "apps.open", url })
+    }
 
     return url
 }

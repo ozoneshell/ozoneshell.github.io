@@ -1,5 +1,10 @@
 // Ozone standard utility for ozone default apps
 
+const renderText = (text) => {
+  const escaped = (text || '');
+  return escaped.replace(/\n/g, '<br>');
+};
+
 // system dialogs
 class SystemDialog {
   static instance = new SystemDialog();
@@ -44,11 +49,12 @@ class SystemDialog {
 
         const title = document.createElement('div');
         title.classList.add('sd-title');
-        title.textContent = config.title;
 
         const desc = document.createElement('div');
         desc.classList.add('sd-description');
-        desc.textContent = config.description;
+
+        title.innerHTML = renderText(config.title);
+        desc.innerHTML = renderText(config.description);
 
         contentEl.append(title, desc);
       }
@@ -58,7 +64,7 @@ class SystemDialog {
 
         const desc = document.createElement('div');
         desc.classList.add('sd-description');
-        desc.textContent = config.description;
+        desc.innerHTML = renderText(config.description);
 
         contentEl.appendChild(desc);
       }

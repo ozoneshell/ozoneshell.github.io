@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
             margin: 0;
             padding: 0;
         }
+
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             background: black;
@@ -21,6 +23,7 @@
             overflow: hidden;
             color: #1a1a1a;
         }
+
         #wizard {
             display: flex;
             flex-direction: column;
@@ -30,11 +33,13 @@
             max-width: 1000px;
             margin: auto;
         }
+
         .header-band {
             background: #263B9C;
             padding: 2em;
             flex-shrink: 0;
         }
+
         .header-band .brand {
             display: flex;
             align-items: center;
@@ -42,22 +47,26 @@
             margin-bottom: 20px;
             opacity: 0.85;
         }
+
         .header-band .brand span {
             color: white;
             font-size: 1em;
             letter-spacing: 0.5px;
         }
+
         .header-band h1 {
             color: white;
             font-size: 2em;
             font-weight: 400;
             margin-bottom: 6px;
         }
+
         .header-band p {
             color: rgba(255, 255, 255, 0.78);
             font-size: 1em;
             line-height: 1.5;
         }
+
         .body-card {
             background-color: white;
             flex: 1;
@@ -69,6 +78,7 @@
             gap: 1em;
             overflow-y: auto;
         }
+
         .dot-nav {
             display: flex;
             justify-content: center;
@@ -78,6 +88,7 @@
             transform: translateY(-3em);
             pointer-events: none;
         }
+
         .dot-nav .dot {
             width: 7px;
             height: 7px;
@@ -86,19 +97,23 @@
             opacity: 0.25;
             transition: width 0.2s;
         }
+
         .dot-nav .dot.active {
             opacity: 1;
             width: 1em;
         }
+
         .screen {
             display: none;
             flex-direction: column;
             flex: 1;
             min-height: 0;
         }
+
         .screen.active {
             display: flex;
         }
+
         .choice-card {
             border: 1.5px solid #ddd;
             border-radius: 4px;
@@ -109,13 +124,16 @@
             gap: 12px;
             background: white;
         }
+
         .choice-card:hover {
             border-color: #aaa;
         }
+
         .choice-card.selected {
             border-color: #263B9C;
             background: #f0f7ff;
         }
+
         .radio-dot {
             width: 18px;
             height: 18px;
@@ -127,10 +145,12 @@
             align-items: center;
             justify-content: center;
         }
+
         .choice-card.selected .radio-dot {
             border-color: #263B9C;
             background: #263B9C;
         }
+
         .radio-inner {
             width: 6px;
             height: 6px;
@@ -138,20 +158,24 @@
             background: white;
             display: none;
         }
+
         .choice-card.selected .radio-inner {
             display: block;
         }
+
         .choice-card .label {
             font-size: 1em;
             font-weight: 500;
             color: #1a1a1a;
             margin-bottom: 2px;
         }
+
         .choice-card .sublabel {
             font-size: .9em;
             color: #666;
             line-height: 1.5;
         }
+
         .btn {
             padding: 8px 22px;
             border-radius: 2px;
@@ -160,30 +184,37 @@
             cursor: pointer;
             border: 1px solid transparent;
         }
+
         .btn-primary {
             background: #263B9C;
             color: white;
             border-color: #263B9C;
         }
+
         .btn-primary:hover {
             background: #006cbe;
         }
+
         .btn-danger {
             background: #c42b1c;
             color: white;
             border-color: #c42b1c;
         }
+
         .btn-danger:hover {
             background: #b0251a;
         }
+
         .btn-ghost {
             background: transparent;
             color: #263B9C;
             border-color: #263B9C;
         }
+
         .btn-ghost:hover {
             background: #f0f7ff;
         }
+
         .btn-row {
             display: flex;
             justify-content: space-between;
@@ -192,12 +223,14 @@
             gap: .5em;
             padding-top: 12px;
         }
+
         .info-box {
             background: #f7f7f7;
             border: 1px solid #e5e5e5;
             border-radius: 4px;
             padding: 1em 16px;
         }
+
         .info-box .info-label {
             font-size: 1em;
             text-transform: uppercase;
@@ -205,16 +238,19 @@
             color: #888;
             margin-bottom: 8px;
         }
+
         .info-box .info-action {
             font-size: 1em;
             font-weight: 500;
             color: #1a1a1a;
             margin-bottom: 3px;
         }
+
         .info-box .info-desc {
             font-size: 1em;
             color: #666;
         }
+
         .warn-box {
             background: #fff8e6;
             border: 1px solid #f0c040;
@@ -224,12 +260,14 @@
             color: #7a5800;
             line-height: 1.5;
         }
+
         .progress-track {
             height: 4px;
             background: #e8e8e8;
             border-radius: 2px;
             overflow: hidden;
         }
+
         .progress-fill {
             height: 100%;
             width: 0%;
@@ -237,6 +275,7 @@
             border-radius: 2px;
             transition: width 0.4s ease;
         }
+
         .progress-meta {
             display: flex;
             justify-content: space-between;
@@ -244,6 +283,7 @@
             color: #666;
             margin-bottom: 6px;
         }
+
         .log-stream {
             flex: 1;
             overflow-y: auto;
@@ -258,34 +298,43 @@
             min-height: 80px;
             max-height: 240px;
         }
+
         .log-line {
             display: flex;
             gap: 8px;
             align-items: baseline;
         }
+
         .log-line .ts {
             color: #999;
             flex-shrink: 0;
             font-size: 11px;
         }
+
         .log-line .msg {
             word-break: break-all;
         }
+
         .log-line.log-ok .msg {
             color: #1a7f3c;
         }
+
         .log-line.log-err .msg {
             color: #c42b1c;
         }
+
         .log-line.log-warn .msg {
             color: #7a5800;
         }
+
         .log-line.log-info .msg {
             color: #263B9C;
         }
+
         .log-line.log-dim .msg {
             color: #888;
         }
+
         .done-check {
             width: 52px;
             height: 52px;
@@ -296,6 +345,7 @@
             justify-content: center;
             margin: 0 auto 12px;
         }
+
         .done-msg {
             font-size: 1em;
             color: #555;
@@ -304,6 +354,7 @@
             max-width: 320px;
             margin: 0 auto;
         }
+
         .done-stats {
             margin-top: 10px;
             font-size: 12px;
@@ -313,6 +364,7 @@
     </style>
     <link href="assets/logo-tiny.png" rel="icon">
 </head>
+
 <body>
     <div id="wizard">
         <div class="screen active" id="screen-0">
@@ -336,7 +388,9 @@
                     </div>
                     <div>
                         <div class="label">Fresh install</div>
-                        <div class="sublabel">Installs the basic Ozone default app package, and sets up the Ozone Shell. <b>Required for any Ozone app</b>.</div>
+                        <div class="sublabel">Installs the basic Ozone default app package, and sets up the Ozone Shell.
+                            <b>Required for any Ozone app</b>.
+                        </div>
                     </div>
                 </div>
                 <div class="choice-card" id="choice-update" onclick="selectChoice('update')">
@@ -460,9 +514,13 @@
             <div class="dot" id="dot-3"></div>
         </div>
     </div>
-    <script>
+    <script type="module">
+        import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
+        import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
+
+
         var currentChoice = 'fresh';
-        
+
         var _logEl = null;
         var _progressPlan = null;
         function getLogEl() {
@@ -514,7 +572,7 @@
             document.getElementById('progress-pct').textContent = pct + '%';
             if (label) document.getElementById('progress-label').textContent = label;
         }
-        
+
         function goScreen(n) {
             document.querySelectorAll('.screen').forEach(function (s, i) { s.classList.toggle('active', i === n); });
             document.querySelectorAll('.dot').forEach(function (d, i) { d.classList.toggle('active', i === n); });
@@ -527,6 +585,9 @@
                 document.getElementById('choice-' + k).classList.toggle('selected', k === key);
             });
         }
+
+        window.goScreen = goScreen;
+        window.selectChoice = selectChoice;
         function populateConfirm() {
             var c = CHOICES[currentChoice];
             document.getElementById('confirm-title').textContent = c.title;
@@ -537,7 +598,7 @@
             btn.textContent = c.confirmBtn;
             btn.className = 'btn ' + (currentChoice === 'reset' ? 'btn-danger' : 'btn-primary');
         }
-        
+
         var CHOICES = {
             fresh: {
                 title: 'Ready to install', action: 'Fresh install',
@@ -611,7 +672,7 @@
                 doneMsg: 'Service workers unregistered and filesystem deleted. Refresh the page to start fresh.'
             }
         };
-        
+
         async function runProgress() {
             var c = CHOICES[currentChoice];
             _logEl = document.getElementById('log-stream');
@@ -626,8 +687,8 @@
             setProgressPlan(c.phases);
             var t0 = Date.now();
             var fileCount = 0, errorCount = 0;
-            
-            
+
+
             var _origLog = window.log;
             window.log = function (msg) {
                 var lvl = 'info';
@@ -655,8 +716,6 @@
             document.getElementById('done-stats').textContent = stats;
             document.getElementById('done-btn').style.display = 'inline-block';
         }
-    </script>
-    <script>
         var state = {
             defaultApps: ["files", "settings", "text", "media", "menu"],
             appRepo: "additionalApps/",
@@ -689,14 +748,18 @@
             const v = versions.osware
             const reg = await navigator.serviceWorker.getRegistration()
             if (!reg) {
-                await navigator.serviceWorker.register(`/sw.js?v=${v}`)
+                await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+                    type: "module"
+                })
                 localStorage.setItem("osware_sw_version", v)
                 log("Service worker registered")
                 return
             }
             const current = localStorage.getItem("osware_sw_version")
             if (current != v) {
-                await navigator.serviceWorker.register(`/sw.js?v=${v}`)
+                await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+                    type: "module"
+                })
                 localStorage.setItem("osware_sw_version", v)
                 log("Service worker upgraded")
             }
@@ -780,7 +843,8 @@
             }, 1000)
         }
     </script>
-    <script src="scripts/utility.js"></script>
-    <script src="scripts/vfs.js"></script>
+    <script src="scripts/utility.js" type="module"></script>
+    <script src="scripts/vfs.js" type="module"></script>
 </body>
+
 </html>
