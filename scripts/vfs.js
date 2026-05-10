@@ -210,29 +210,49 @@ async function writeBlob(data) {
   const { content } = await dirs()
 
   let buf
+
   if (data instanceof ArrayBuffer) {
     buf = data
+
+  } else if (ArrayBuffer.isView(data)) {
+    buf = data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength
+    )
+
   } else if (data instanceof Blob) {
     buf = await data.arrayBuffer()
+
   } else if (typeof data === "string") {
     buf = new TextEncoder().encode(data).buffer
-  } else {
+
+  } else if (data?.getReader) {
     const reader = data.getReader()
     const chunks = []
+
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       chunks.push(value)
     }
+
     const total = chunks.reduce((n, c) => n + c.byteLength, 0)
     const merged = new Uint8Array(total)
+
     let off = 0
-    for (const c of chunks) { merged.set(new Uint8Array(c), off); off += c.byteLength }
+    for (const c of chunks) {
+      merged.set(new Uint8Array(c), off)
+      off += c.byteLength
+    }
+
     buf = merged.buffer
+  } else {
+    throw new Error("Unsupported data type for writeBlob")
   }
 
   const id = await sha1hex(buf)
   const existing = await opfsRead(content, id + ".rc")
+
   if (existing === null) {
     await opfsWriteBinary(content, id, buf)
     await opfsWrite(content, id + ".rc", "1")
@@ -240,6 +260,7 @@ async function writeBlob(data) {
     const rc = parseInt(existing, 10) || 0
     await opfsWrite(content, id + ".rc", String(rc + 1))
   }
+
   return id
 }
 

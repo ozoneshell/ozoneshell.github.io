@@ -78,14 +78,12 @@
     <div id="status"></div>
 
     <script type="module">
-        import { Ozone } from "/ozone.js"
+        import { Ozone } from "https://ozoneshell.github.io/ozone.js"
 
         const ozone = new Ozone({
             defaultApps: ["files", "settings", "text"],
             sourceURL: "/defaultSource"
         })
-
-        // ozone.install() installs ozone
 
         const run = (label, fn, done = "Done", fail = "Failed") => async () => {
             setStatus(label)

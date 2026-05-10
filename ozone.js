@@ -101,10 +101,12 @@ export class Ozone {
     const versions = await this.fetchJSON(this.config.versionURL)
     const v = versions.osware
 
-    const reg = await navigator.serviceWorker.getRegistration()
+    const swUrl = new URL(`./sw.js?v=${v}`, import.meta.url)
+
+    const reg = await navigator.serviceWorker.getRegistration(swUrl)
 
     if (!reg) {
-      await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+      await navigator.serviceWorker.register(swUrl, {
         type: "module"
       })
 
@@ -115,7 +117,7 @@ export class Ozone {
     const current = localStorage.getItem(this.config.swKey)
 
     if (current !== v) {
-      await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+      await navigator.serviceWorker.register(swUrl, {
         type: "module"
       })
 

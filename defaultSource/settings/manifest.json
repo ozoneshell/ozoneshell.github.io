@@ -7,7 +7,6 @@
         "settings",
         "files"
     ],
-    "pronouns": "she/her",
     "landing": "index.html",
     "sources": [
         "script.js",
