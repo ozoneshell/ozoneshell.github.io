@@ -3,7 +3,7 @@ import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-
 import { mimeFromPath } from "./scripts/utility.js"
 
 (async () => {
-  await ensureRoot()
+    await ensureRoot()
 })()
 
 class LRU {
@@ -301,7 +301,7 @@ html.app-ready {overflow: auto;}
     return result
 }
 
-const liveReloadBodyCache = new LRU(20) 
+const liveReloadBodyCache = new LRU(20)
 
 const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
@@ -348,11 +348,24 @@ async function route(request, parts) {
             ? parts.slice(2).join("/")
             : "index.html"
 
+    const sharedAssetsURL =
+        new URL(rawUrl).searchParams.get("sharedAssetsURL")
+
     const resolvedLiveUrl =
         liveReloadUrl ??
         (
             liveBase
-                ? liveBase.replace(/\/[^/]*$/, "/") + assetPath
+                ? (
+                    isShared
+                        ? (
+                            liveBase.replace(/\/$/, "") +
+                            "/" +
+                            (sharedAssetsURL || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "") +
+                            "/" +
+                            parts.slice(3).join("/")
+                        )
+                        : liveBase.replace(/\/[^/]*$/, "/") + assetPath
+                )
                 : null
         )
 
