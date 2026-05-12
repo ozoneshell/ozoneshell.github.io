@@ -121,7 +121,7 @@ export const rpc = {
                 }
 
                 const data = await res.json()
-
+                const base = `/system/apps/${data.author}/${data.name}`
                 const sources = data.sources || []
                 const files = {}
 
@@ -129,12 +129,10 @@ export const rpc = {
                     sources.map(async file => {
                         try {
                             const r = await fetch(`${appURL}/${file}`)
-
                             if (!r.ok) {
                                 console.warn(`missing file: ${file}`)
                                 return
                             }
-
                             files[file] = await r.blob()
                         } catch (err) {
                             console.warn(`failed fetching ${file}`, err)
@@ -145,7 +143,6 @@ export const rpc = {
                 if (data.landing) {
                     try {
                         const r = await fetch(`${appURL}/${data.landing}`)
-
                         if (r.ok) {
                             files["index.html"] = await r.blob()
                         } else {
@@ -161,39 +158,40 @@ export const rpc = {
                     { type: "application/json" }
                 )
 
-                const path = await rpc.store.install(
-                    data.author,
-                    data.name,
-                    files,
-                    data
-                )
-
-                return {
-                    ok: true,
-                    path
-                }
+                const path = await rpc.store.install(base, files, data)
+                return { ok: true, path }
             } catch (err) {
                 console.error(err)
-
-                return {
-                    ok: false,
-                    error: err.message
-                }
+                return { ok: false, error: err.message }
             }
         },
 
-        async install(author, name, files, manifest) {
-            const base = `/system/apps/${author}/${name}`
+        async install(base, files, metadata = null) {
+            const parts = base.replace(/^\/+|\/+$/g, "").split("/")
+            const author = parts.at(-2)
+            const name = parts.at(-1)
 
-            await settings.set(`${author}/${name}`, {permissions: manifest.permissions}, "appRegistry.json")
+            if (!author || !name) {
+                throw new Error("invalid install path")
+            }
 
-            if (manifest.capabilities) {
-                const FileBindings = (await settings.get("FileBindings")) ?? {}
-                const key = `${author}/${name}`
-                for (const ext of manifest.capabilities) {
-                    FileBindings[ext] = [...new Set([...(FileBindings[ext] ?? []), key])]
+            if (metadata) {
+                await settings.set(
+                    `${author}/${name}`,
+                    { permissions: metadata.permissions },
+                    "appRegistry.json"
+                )
+
+                if (metadata.capabilities) {
+                    const FileBindings = (await settings.get("FileBindings")) ?? {}
+                    const key = `${author}/${name}`
+                    for (const ext of metadata.capabilities) {
+                        FileBindings[ext] = [
+                            ...new Set([...(FileBindings[ext] ?? []), key])
+                        ]
+                    }
+                    await settings.set("FileBindings", FileBindings)
                 }
-                await settings.set("FileBindings", FileBindings)
             }
 
             await Promise.all(

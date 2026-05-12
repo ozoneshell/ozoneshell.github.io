@@ -128,8 +128,7 @@ async function handleNavigation(request, pathname) {
         pathname.startsWith("/scripts/") ||
         pathname.startsWith("/assets/") ||
         pathname.startsWith("/defaultSource/") ||
-        pathname.startsWith("/favicon") ||
-        pathname.startsWith("/apps/")
+        pathname.startsWith("/favicon") 
     ) {
         log("bypassing navigation interception", pathname)
         return fetch(request)
