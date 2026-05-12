@@ -29,22 +29,206 @@ class LRU {
     get size() { return this.#map.size }
 }
 
-self.addEventListener("install", () => self.skipWaiting())
-self.addEventListener("activate", e => e.waitUntil(clients.claim()))
+self.addEventListener("install", () => {
+    log("install")
+    self.skipWaiting()
+})
+self.addEventListener("activate", e => {
+    log("activate")
+    e.waitUntil(clients.claim())
+})
+const SW_URL = new URL(self.location.href)
+const DEBUG_LOGS = SW_URL.searchParams.get("log") === "true"
+
+function log(...args) {
+    if (DEBUG_LOGS) {
+        console.log("[SW]", ...args)
+    }
+}
+
+self.__OZONE_CONFIG__ = {
+    launcher: JSON.parse(
+        decodeURIComponent(
+            SW_URL.searchParams.get("launcher") ?? "null"
+        )
+    )
+}
+
+log("config", self.__OZONE_CONFIG__)
+
 self.addEventListener("message", handleRpcMessage)
 self.addEventListener("fetch", e => {
-    const url = new URL(e.request.url)
-    if (!url.pathname.startsWith("/apps/")) return
-    const parts = url.pathname.split("/").filter(Boolean)
-    if (!url.pathname.endsWith("/")) {
-        const last = parts[parts.length - 1]
-        if (!last.includes(".")) {
-            e.respondWith(Response.redirect(url.pathname + "/", 301))
-            return
+    const request = e.request
+    log("fetch", {
+        method: request.method,
+        url: request.url,
+        mode: request.mode
+    })
+
+    if (request.method !== "GET") return
+
+    const url = new URL(request.url)
+
+    if (
+        url.pathname.startsWith("/apps/") ||
+        url.pathname.startsWith("/sharedAssets/")
+    ) {
+        const parts = url.pathname.split("/").filter(Boolean)
+
+        log("apps route", {
+            pathname: url.pathname,
+            parts
+        })
+
+        if (!url.pathname.endsWith("/")) {
+            const last = parts[parts.length - 1]
+
+            if (!last.includes(".")) {
+                log("redirecting trailing slash", url.pathname + "/")
+
+                e.respondWith(
+                    Response.redirect(url.pathname + "/", 301)
+                )
+                return
+            }
         }
+
+        e.respondWith(route(request, parts))
+        return
     }
-    e.respondWith(route(e.request, parts.slice(1)))
+
+    if (request.mode === "navigate") {
+        log("navigation request", url.pathname)
+        e.respondWith(handleNavigation(request))
+    }
 })
+async function handleNavigation(request) {
+    const launcherPath = getLauncherPath()
+
+    log("handleNavigation", {
+        request: request.url,
+        launcherPath
+    })
+
+    if (!launcherPath) {
+        log("no launcher configured, falling back to fetch")
+        return fetch(request)
+    }
+
+    const url = new URL(request.url)
+
+    if (
+        url.pathname.startsWith("/scripts/") ||
+        url.pathname.startsWith("/assets/") ||
+        url.pathname.startsWith("/defaultSource/") ||
+        url.pathname.startsWith("/favicon") ||
+        url.pathname.startsWith("/apps/")
+    ) {
+        log("bypassing navigation interception", url.pathname)
+        return fetch(request)
+    }
+
+    log("serving launcher")
+    return serveLauncher()
+}
+
+function createHtmlInjector(head, loaderDiv) {
+    const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
+
+    let injected = false
+    let buffer = ""
+
+    return new TransformStream({
+        transform(chunk, controller) {
+            buffer += decoder.decode(chunk, { stream: true })
+
+            if (!injected) {
+                const headMatch = /<\/head>/i.exec(buffer)
+
+                if (headMatch) {
+                    injected = true
+
+                    const headIdx = headMatch.index
+
+                    let html =
+                        buffer.slice(0, headIdx) +
+                        head +
+                        buffer.slice(headIdx)
+
+                    if (loaderDiv) {
+                        const bodyMatch = /<body[^>]*>/i.exec(html)
+
+                        if (bodyMatch) {
+                            const insertAt =
+                                bodyMatch.index + bodyMatch[0].length
+
+                            html =
+                                html.slice(0, insertAt) +
+                                loaderDiv +
+                                html.slice(insertAt)
+                        }
+                    }
+
+                    controller.enqueue(
+                        encoder.encode(html)
+                    )
+
+                    buffer = ""
+                    return
+                }
+
+                if (buffer.length > 8192) {
+                    controller.enqueue(
+                        encoder.encode(buffer.slice(0, 4096))
+                    )
+
+                    buffer = buffer.slice(4096)
+                }
+
+                return
+            }
+
+            controller.enqueue(
+                encoder.encode(buffer)
+            )
+
+            buffer = ""
+        },
+
+        flush(controller) {
+            if (!injected) {
+                let html = buffer + head
+
+                if (loaderDiv) {
+                    const bodyMatch = /<body[^>]*>/i.exec(html)
+
+                    if (bodyMatch) {
+                        const insertAt =
+                            bodyMatch.index + bodyMatch[0].length
+
+                        html =
+                            html.slice(0, insertAt) +
+                            loaderDiv +
+                            html.slice(insertAt)
+                    }
+                }
+
+                controller.enqueue(
+                    encoder.encode(html)
+                )
+
+                return
+            }
+
+            if (buffer) {
+                controller.enqueue(
+                    encoder.encode(buffer)
+                )
+            }
+        }
+    })
+}
 
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
@@ -71,6 +255,75 @@ async function revalidateVfs(vfsPath) {
     const fresh = await readFile(vfsPath).catch(() => null)
     if (fresh?.type === "file") vfsCache.set(vfsPath, fresh)
     else if (fresh === null || fresh?.type !== "file") vfsCache.delete(vfsPath)
+}
+
+function getLauncherPath() {
+    const cfg = self.__OZONE_CONFIG__
+    if (!cfg?.launcher) return null
+
+    const { author, name } = cfg.launcher
+
+    if (!author || !name) return null
+
+    return `/system/apps/${author}/${name}/index.html`
+}
+
+async function serveLauncher() {
+    const launcherPath = getLauncherPath()
+
+    log("serveLauncher", { launcherPath })
+
+    if (!launcherPath) {
+        log("launcher missing, fallback /")
+        return fetch("/")
+    }
+
+    const parts = launcherPath
+        .replace(/^\/system\/apps\//, "")
+        .split("/")
+
+    log("launcher parts", parts)
+
+    const streamed = await cachedStreamFile(launcherPath)
+
+    if (!streamed || streamed.type !== "file") {
+        log("launcher file missing")
+        return new Response("Launcher missing", { status: 404 })
+    }
+
+    const manifestPath =
+        `/system/apps/${parts[0]}/${parts[1]}/manifest.json`
+
+    log("loading launcher manifest", manifestPath)
+
+    const manifest = await getManifest(manifestPath)
+
+    log("launcher manifest", manifest)
+
+    const iconSvg =
+        typeof manifest?.icon === "string"
+            ? manifest.icon
+            : ""
+
+    const { head, loaderDiv } = buildInjectedScript(iconSvg)
+
+    const injectedHead =
+        `<base href="/apps/${parts[0]}/${parts[1]}/">` +
+        `<script>window.__APP_BASE__="/apps/${parts[0]}/${parts[1]}/"</script>` +
+        head
+
+    const stream = streamed.file
+        .stream()
+        .pipeThrough(createHtmlInjector(injectedHead, loaderDiv))
+
+    log("launcher served")
+
+    return new Response(stream, {
+        headers: {
+            "Content-Type": "text/html",
+            "Cross-Origin-Opener-Policy": "same-origin"
+        }
+    })
 }
 
 const vfsBlobCache = new LRU(20)
@@ -307,6 +560,11 @@ const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy"
 const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
 
 async function route(request, parts) {
+    log("route:start", {
+        url: request.url,
+        parts
+    })
+
     const rawUrl = request.url
     const lrIdx = rawUrl.indexOf("livereload=")
 
@@ -314,20 +572,39 @@ async function route(request, parts) {
         ? new URL(rawUrl).searchParams.get("livereload")
         : null
 
-    const isShared = parts[2] === "sharedAssets"
-    const appKey = isShared ? "" : parts[0] + "/" + parts[1]
+    log("route:livereload", {
+        lrIdx,
+        liveReloadUrl
+    })
 
+    const isShared =
+        parts[0] === "sharedAssets"
+    const appKey =
+        isShared
+            ? ""
+            : parts[1] + "/" + parts[2]
+    log("route:app", {
+        isShared,
+        appKey
+    })
     const vfsPath = isShared
-        ? SHARED_PREFIX + (parts.length > 3 ? parts.slice(3).join("/") : "index.html")
+        ? SHARED_PREFIX +
+        (parts.length > 1
+            ? parts.slice(1).join("/")
+            : "index.html")
         : APPS_PREFIX +
-        parts[0] +
-        "/" +
         parts[1] +
         "/" +
-        (parts.length > 2 ? parts.slice(2).join("/") : "index.html")
+        parts[2] +
+        "/" +
+        (parts.length > 3
+            ? parts.slice(3).join("/")
+            : "index.html")
+
+    log("route:vfsPath", vfsPath)
 
     if (isShared) {
-        if (parts.length < 3) {
+        if (parts.length < 2) {
             return new Response("Forbidden", { status: 403 })
         }
     } else {
@@ -368,11 +645,12 @@ async function route(request, parts) {
                 )
                 : null
         )
-
+    log("live reload resolved", {
+        resolvedLiveUrl
+    })
     const manifestPath = !isShared
-        ? APPS_PREFIX + parts[0] + "/" + parts[1] + "/manifest.json"
+        ? APPS_PREFIX + parts[1] + "/" + parts[2] + "/manifest.json"
         : null
-
     const manifest = await getManifest(manifestPath)
 
     const iconSvg =
@@ -381,104 +659,6 @@ async function route(request, parts) {
             : ""
 
     const { head, loaderDiv } = buildInjectedScript(iconSvg)
-
-    function createHtmlInjector(head, loaderDiv) {
-        const encoder = new TextEncoder()
-        const decoder = new TextDecoder()
-
-        let injected = false
-        let buffer = ""
-
-        return new TransformStream({
-            transform(chunk, controller) {
-                buffer += decoder.decode(chunk, { stream: true })
-
-                if (!injected) {
-                    const headMatch = /<\/head>/i.exec(buffer)
-
-                    if (headMatch) {
-                        injected = true
-
-                        const headIdx = headMatch.index
-
-                        let html =
-                            buffer.slice(0, headIdx) +
-                            head +
-                            buffer.slice(headIdx)
-
-                        if (loaderDiv) {
-                            const bodyMatch = /<body[^>]*>/i.exec(html)
-
-                            if (bodyMatch) {
-                                const insertAt =
-                                    bodyMatch.index + bodyMatch[0].length
-
-                                html =
-                                    html.slice(0, insertAt) +
-                                    loaderDiv +
-                                    html.slice(insertAt)
-                            }
-                        }
-
-                        controller.enqueue(
-                            encoder.encode(html)
-                        )
-
-                        buffer = ""
-                        return
-                    }
-
-                    if (buffer.length > 8192) {
-                        controller.enqueue(
-                            encoder.encode(buffer.slice(0, 4096))
-                        )
-
-                        buffer = buffer.slice(4096)
-                    }
-
-                    return
-                }
-
-                controller.enqueue(
-                    encoder.encode(buffer)
-                )
-
-                buffer = ""
-            },
-
-            flush(controller) {
-                if (!injected) {
-                    let html = buffer + head
-
-                    if (loaderDiv) {
-                        const bodyMatch = /<body[^>]*>/i.exec(html)
-
-                        if (bodyMatch) {
-                            const insertAt =
-                                bodyMatch.index + bodyMatch[0].length
-
-                            html =
-                                html.slice(0, insertAt) +
-                                loaderDiv +
-                                html.slice(insertAt)
-                        }
-                    }
-
-                    controller.enqueue(
-                        encoder.encode(html)
-                    )
-
-                    return
-                }
-
-                if (buffer) {
-                    controller.enqueue(
-                        encoder.encode(buffer)
-                    )
-                }
-            }
-        })
-    }
 
     if (resolvedLiveUrl) {
         const cacheEntry = liveReloadBodyCache.get(resolvedLiveUrl)
@@ -494,6 +674,10 @@ async function route(request, parts) {
             .catch(() => null)
 
         if (cacheEntry) {
+            log("live reload cache hit", {
+                resolvedLiveUrl
+            })
+
             const { buffer, ct } = cacheEntry
             const headers = new Headers({
                 "Content-Type": ct,
@@ -523,6 +707,10 @@ async function route(request, parts) {
 
         if (!res) return new Response("LiveReload error", { status: 500 })
 
+        log("live reload fetched from network", {
+            resolvedLiveUrl
+        })
+
         const { buffer, ct } = res
         const headers = new Headers({
             "Content-Type": ct,
@@ -546,10 +734,16 @@ async function route(request, parts) {
     const streamed = await cachedStreamFile(vfsPath)
 
     if (!streamed || streamed.type !== "file") {
+        log("not found", vfsPath)
         return new Response("Not found", { status: 404 })
     }
 
     const contentType = mimeFromPath(vfsPath)
+
+    log("serving asset", {
+        vfsPath,
+        contentType
+    })
 
     if (contentType !== "text/html") {
         return new Response(
@@ -574,7 +768,3 @@ async function route(request, parts) {
         }
     })
 }
-
-self.addEventListener("message", handleRpcMessage)
-self.addEventListener("install", () => self.skipWaiting())
-self.addEventListener("activate", e => e.waitUntil(clients.claim()))

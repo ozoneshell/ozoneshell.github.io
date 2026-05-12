@@ -78,11 +78,15 @@
     <div id="status"></div>
 
     <script type="module">
-        import { Ozone } from "https://ozoneshell.github.io/ozone.js"
+        import { Ozone } from "./ozone.js"
 
         const ozone = new Ozone({
             defaultApps: ["files", "settings", "text"],
-            sourceURL: "/defaultSource"
+            sourceURL: "/defaultSource",
+            launcher: {
+                author: "ozone",
+                name: "Files"
+            }
         })
 
         const run = (label, fn, done = "Done", fail = "Failed") => async () => {

@@ -15,6 +15,7 @@ export class Ozone {
       swKey: "osware_sw_version",
       dbName: "ozoneVFS",
       versionURL: "/versions.json",
+      launcher: null,
       ...config
     }
   }
@@ -101,25 +102,35 @@ export class Ozone {
     const versions = await this.fetchJSON(this.config.versionURL)
     const v = versions.osware
 
-    const reg = await navigator.serviceWorker.getRegistration()
+    const launcher = encodeURIComponent(
+      JSON.stringify(this.config.launcher ?? null)
+    )
 
-    if (!reg) {
-      await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+    const swUrl =
+      `/sw.js?v=${v}&launcher=${launcher}&log=true`
+
+    const existing = await navigator.serviceWorker.getRegistration()
+
+    if (!existing) {
+      await navigator.serviceWorker.register(swUrl, {
         type: "module"
       })
 
-      localStorage.setItem(this.config.swKey, v)
+      localStorage.setItem(this.config.swKey, swUrl)
+
       return
     }
 
     const current = localStorage.getItem(this.config.swKey)
 
-    if (current !== v) {
-      await navigator.serviceWorker.register(`/sw.js?v=${v}`, {
+    if (current !== swUrl) {
+      await existing.unregister()
+
+      await navigator.serviceWorker.register(swUrl, {
         type: "module"
       })
 
-      localStorage.setItem(this.config.swKey, v)
+      localStorage.setItem(this.config.swKey, swUrl)
     }
   }
 
