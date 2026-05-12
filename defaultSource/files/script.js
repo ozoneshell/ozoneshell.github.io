@@ -281,23 +281,32 @@ async function renderFiles(path = state.path) {
     document.querySelector("#path_input_element").value = path
     openTopBarPage("folder");
 }
-const input = document.getElementById("filePicker")
+const fileInput = document.getElementById("filePicker")
+const folderInput = document.getElementById("folderPicker")
 
 function importFiles() {
-    input.click()
+    fileInput.click()
 }
-input.addEventListener("change", async e => {
+
+function importFolder() {
+    folderInput.click()
+}
+
+fileInput.addEventListener("change", async e => {
     for (const file of e.target.files) {
         const content = await file.arrayBuffer()
         await api.fileSet.write(`downloads/${file.name}`, content)
     }
 })
 
-document.addEventListener("click", e => {
-    const el = e.target.closest(".menu_action")
-    if (!el) return
-    const fn = actionMap[el.dataset.action]
-    if (fn) fn(el)
+folderInput.addEventListener("change", async e => {
+    for (const file of e.target.files) {
+        const content = await file.arrayBuffer()
+
+        const path = file.webkitRelativePath || file.name
+
+        await api.fileSet.write(`downloads/${path}`, content)
+    }
 })
 
 const actionMap = {
@@ -333,6 +342,13 @@ const actionMap = {
     export_file: () => exportFile(),
     rename_file: () => renameFile(),
 }
+
+document.addEventListener("click", e => {
+    const el = e.target.closest(".menu_action")
+    if (!el) return
+    const fn = actionMap[el.dataset.action]
+    if (fn) fn(el)
+})
 
 function setView(view) {
     state.currentView = view

@@ -1,4 +1,4 @@
-import { ensureRoot, writeFile } from "/scripts/vfs.js"
+import { ensureRoot, writeFile, opfsRoot } from "/scripts/vfs.js"
 import { settings } from "/scripts/utility.js"
 import { rpc } from "/scripts/sw-api.js"
 
@@ -14,7 +14,7 @@ export class Ozone {
         "ozone_std_util.js"
       ],
       swKey: "osware_sw_version",
-      dbName: "ozoneVFS",
+      dbName: "vfs",
       versionURL: "/versions.json",
       launcher: null,
       ...config
@@ -109,7 +109,8 @@ export class Ozone {
 
   async reset() {
     try {
-
+      const root = await opfsRoot()
+      await root.removeEntry("vfs", { recursive: true })
 
       const regs = await navigator.serviceWorker.getRegistrations()
       await Promise.all(regs.map(r => r.unregister()))

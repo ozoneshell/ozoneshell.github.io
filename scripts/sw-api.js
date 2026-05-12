@@ -185,7 +185,7 @@ export const rpc = {
         async install(author, name, files, manifest) {
             const base = `/system/apps/${author}/${name}`
 
-            await settings.set(`${author}/${name}`, base, "TagPathIndex.json")
+            await settings.set(`${author}/${name}`, {permissions: manifest.permissions}, "appRegistry.json")
 
             if (manifest.capabilities) {
                 const FileBindings = (await settings.get("FileBindings")) ?? {}
@@ -220,7 +220,7 @@ export async function handleRpcMessage(e) {
     const appKey = entry?.appKey ?? null
 
     const namespace = d.method.split(".")[0]
-    if (!isNamespaceAllowed(appKey, namespace)) {
+    if (!await isNamespaceAllowed(appKey, namespace)) {
         console.warn(`[SW] RPC blocked: ${appKey ?? "unregistered"} → ${d.method}`)
         e.source.postMessage({ type: "rpc-res", id: d.id, result: null, blocked: true })
         return

@@ -61,7 +61,7 @@ function norm(p) {
 }
 
 let _root = null
-async function opfsRoot() {
+export async function opfsRoot() {
   if (!_root) _root = await navigator.storage.getDirectory()
   return _root
 }

@@ -11,7 +11,8 @@
     "name": "Settings",
     "author": "ozone",
     "icon": "settings",
-    "description": "An app to manage settings.",
+        "fileGet",
+        "fileset"    "description": "An app to manage settings.",
     "cover": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop",
     "src": "settings"
   },
