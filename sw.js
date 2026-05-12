@@ -82,31 +82,32 @@ self.addEventListener("fetch", e => {
             }
         }
 
-        e.respondWith(
-            route(request, url, parts).then(response => {
-                if (e.clientId && parts.length >= 3) {
-                    const appKey = `${parts[1]}/${parts[2]}`
-                    const paramsId = url.searchParams.get("paramsId") ?? null
-                    registerWindow(e.clientId, appKey, paramsId)
-                }
-                return response
+        e.respondWith(route(request, url, parts))
+
+        if (e.clientId && parts.length >= 3) {
+            const appKey = `${parts[1]}/${parts[2]}`
+            const paramsId = url.searchParams.get("paramsId") ?? null
+            rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
+                const permissions = registryItem?.permissions ?? []
+                registerWindow(e.clientId, appKey, paramsId, permissions)
             })
-        )
+        }
         return
     }
 
     if (request.mode === "navigate") {
         log("navigation request", pathname)
-        e.respondWith(
-            handleNavigation(request, pathname).then(response => {
-                const cfg = self.__OZONE_CONFIG__
-                if (e.clientId && cfg?.launcher) {
-                    const { author, name } = cfg.launcher
-                    registerWindow(e.clientId, `${author}/${name}`, null)
-                }
-                return response
+        e.respondWith(handleNavigation(request, pathname))
+
+        const cfg = self.__OZONE_CONFIG__
+        if (e.clientId && cfg?.launcher) {
+            const { author, name } = cfg.launcher
+            const appKey = `${author}/${name}`
+            rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
+                const permissions = registryItem?.permissions ?? []
+                registerWindow(e.clientId, appKey, null, permissions)
             })
-        )
+        }
     }
 })
 
@@ -521,7 +522,7 @@ async function route(request, url, parts) {
         })
     }
 
-     const manifestPath = !isShared
+    const manifestPath = !isShared
         ? `${APPS_PREFIX}${parts[1]}/${parts[2]}/manifest.json`
         : null
     const manifest = await getManifest(manifestPath)

@@ -220,7 +220,7 @@ export async function handleRpcMessage(e) {
     const appKey = entry?.appKey ?? null
 
     const namespace = d.method.split(".")[0]
-    if (!await isNamespaceAllowed(appKey, namespace)) {
+    if (!await isNamespaceAllowed(appKey, namespace, clientId)) {
         console.warn(`[SW] RPC blocked: ${appKey ?? "unregistered"} → ${d.method}`)
         e.source.postMessage({ type: "rpc-res", id: d.id, result: null, blocked: true })
         return

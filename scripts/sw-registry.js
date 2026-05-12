@@ -6,8 +6,8 @@ export const appParams = new Map()
 export const pendingResponses = new Map()
 export const liveReloadBases = new Map()
 
-export function registerWindow(clientId, appKey, paramsId = null) {
-    windowRegistry.set(clientId, { appKey, paramsId, registeredAt: Date.now() })
+export function registerWindow(clientId, appKey, paramsId = null, permissions = []) {
+    windowRegistry.set(clientId, { appKey, paramsId, permissions, registeredAt: Date.now() })
 }
 
 export function unregisterWindow(clientId) {
@@ -22,12 +22,18 @@ export function getAppKeyForClient(clientId) {
     return windowRegistry.get(clientId)?.appKey ?? null
 }
 
-export async function isNamespaceAllowed(appKey, namespace) {
-    let registryItem = await rpc.settings.get(appKey, "appRegistry.json")
-    if (registryItem.permissions.includes(namespace)) {
-        return true;
+export async function isNamespaceAllowed(appKey, namespace, clientId = null) {
+    if (namespace === "apps") return true
+
+    if (clientId) {
+        const entry = windowRegistry.get(clientId)
+        if (entry?.permissions) {
+            return entry.permissions.includes(namespace)
+        }
     }
-    return namespace == "apps" ?? false
+
+    const registryItem = await rpc.settings.get(appKey, "appRegistry.json")
+    return registryItem?.permissions?.includes(namespace) ?? false
 }
 
 export function debugRegistry() {
