@@ -144,29 +144,29 @@ function createHtmlInjector(head, loaderDiv) {
             buffer += decoder.decode(chunk, { stream: true })
 
             if (!injected) {
-                const headMatch = /<\/head>/i.exec(buffer)
+                const headMatch = /<head[^>]*>/i.exec(buffer)
 
                 if (headMatch) {
                     injected = true
 
-                    const headIdx = headMatch.index
+                    const insertAt = headMatch.index + headMatch[0].length
 
                     let html =
-                        buffer.slice(0, headIdx) +
+                        buffer.slice(0, insertAt) +
                         head +
-                        buffer.slice(headIdx)
+                        buffer.slice(insertAt)
 
                     if (loaderDiv) {
                         const bodyMatch = /<body[^>]*>/i.exec(html)
 
                         if (bodyMatch) {
-                            const insertAt =
+                            const bodyInsertAt =
                                 bodyMatch.index + bodyMatch[0].length
 
                             html =
-                                html.slice(0, insertAt) +
+                                html.slice(0, bodyInsertAt) +
                                 loaderDiv +
-                                html.slice(insertAt)
+                                html.slice(bodyInsertAt)
                         }
                     }
 
@@ -198,33 +198,30 @@ function createHtmlInjector(head, loaderDiv) {
 
         flush(controller) {
             if (!injected) {
-                let html = buffer + head
+                let html = buffer
+
+                const headMatch = /<head[^>]*>/i.exec(html)
+                if (headMatch) {
+                    const insertAt = headMatch.index + headMatch[0].length
+                    html = html.slice(0, insertAt) + head + html.slice(insertAt)
+                } else {
+                    html = head + html
+                }
 
                 if (loaderDiv) {
                     const bodyMatch = /<body[^>]*>/i.exec(html)
-
                     if (bodyMatch) {
-                        const insertAt =
-                            bodyMatch.index + bodyMatch[0].length
-
-                        html =
-                            html.slice(0, insertAt) +
-                            loaderDiv +
-                            html.slice(insertAt)
+                        const insertAt = bodyMatch.index + bodyMatch[0].length
+                        html = html.slice(0, insertAt) + loaderDiv + html.slice(insertAt)
                     }
                 }
 
-                controller.enqueue(
-                    encoder.encode(html)
-                )
-
+                controller.enqueue(encoder.encode(html))
                 return
             }
 
             if (buffer) {
-                controller.enqueue(
-                    encoder.encode(buffer)
-                )
+                controller.enqueue(encoder.encode(buffer))
             }
         }
     })
