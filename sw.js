@@ -2,9 +2,7 @@ import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
 import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
 import { mimeFromPath } from "./scripts/utility.js"
 
-(async () => {
-    await ensureRoot()
-})()
+ensureRoot()
 
 class LRU {
     #max; #map
@@ -13,18 +11,23 @@ class LRU {
         this.#map = new Map()
     }
     get(key) {
-        if (!this.#map.has(key)) return undefined
-        const val = this.#map.get(key)
-        this.#map.delete(key)
-        this.#map.set(key, val)
+        const map = this.#map
+        if (!map.has(key)) return undefined
+        const val = map.get(key)
+        map.delete(key)
+        map.set(key, val)
         return val
     }
     set(key, val) {
-        if (this.#map.has(key)) this.#map.delete(key)
-        else if (this.#map.size >= this.#max) this.#map.delete(this.#map.keys().next().value)
-        this.#map.set(key, val)
+        const map = this.#map
+        if (map.has(key)) {
+            map.delete(key)
+        } else if (map.size >= this.#max) {
+            map.delete(map.keys().next().value)
+        }
+        map.set(key, val)
+        return val
     }
-    has(key) { return this.#map.has(key) }
     delete(key) { return this.#map.delete(key) }
     get size() { return this.#map.size }
 }
@@ -37,169 +40,128 @@ self.addEventListener("activate", e => {
     log("activate")
     e.waitUntil(clients.claim())
 })
+
 const SW_URL = new URL(self.location.href)
 const DEBUG_LOGS = SW_URL.searchParams.get("log") === "true"
 
 function log(...args) {
-    if (DEBUG_LOGS) {
-        console.log("[SW]", ...args)
-    }
+    if (DEBUG_LOGS) console.log("[SW]", ...args)
 }
 
 self.__OZONE_CONFIG__ = {
     launcher: JSON.parse(
-        decodeURIComponent(
-            SW_URL.searchParams.get("launcher") ?? "null"
-        )
+        decodeURIComponent(SW_URL.searchParams.get("launcher") ?? "null")
     )
 }
 
 log("config", self.__OZONE_CONFIG__)
 
 self.addEventListener("message", handleRpcMessage)
-self.addEventListener("fetch", e => {
-    const request = e.request
-    log("fetch", {
-        method: request.method,
-        url: request.url,
-        mode: request.mode
-    })
 
+self.addEventListener("fetch", e => {
+    const { request } = e
     if (request.method !== "GET") return
 
     const url = new URL(request.url)
+    const { pathname } = url
 
-    if (
-        url.pathname.startsWith("/apps/") ||
-        url.pathname.startsWith("/sharedAssets/")
-    ) {
-        const parts = url.pathname.split("/").filter(Boolean)
+    log("fetch", { method: request.method, url: request.url, mode: request.mode })
 
-        log("apps route", {
-            pathname: url.pathname,
-            parts
-        })
+    if (pathname.startsWith("/apps/") || pathname.startsWith("/sharedAssets/")) {
+        const parts = pathname.split("/").filter(Boolean)
 
-        if (!url.pathname.endsWith("/")) {
+        log("apps route", { pathname, parts })
+
+        if (!pathname.endsWith("/")) {
             const last = parts[parts.length - 1]
-
             if (!last.includes(".")) {
-                log("redirecting trailing slash", url.pathname + "/")
-
-                e.respondWith(
-                    Response.redirect(url.pathname + "/", 301)
-                )
+                log("redirecting trailing slash", pathname + "/")
+                e.respondWith(Response.redirect(pathname + "/", 301))
                 return
             }
         }
 
-        e.respondWith(route(request, parts))
+        e.respondWith(route(request, url, parts))
         return
     }
 
     if (request.mode === "navigate") {
-        log("navigation request", url.pathname)
-        e.respondWith(handleNavigation(request))
+        log("navigation request", pathname)
+        e.respondWith(handleNavigation(request, pathname))
     }
 })
-async function handleNavigation(request) {
+
+async function handleNavigation(request, pathname) {
     const launcherPath = getLauncherPath()
 
-    log("handleNavigation", {
-        request: request.url,
-        launcherPath
-    })
+    log("handleNavigation", { request: request.url, launcherPath })
 
     if (!launcherPath) {
         log("no launcher configured, falling back to fetch")
         return fetch(request)
     }
 
-    const url = new URL(request.url)
-
     if (
-        url.pathname.startsWith("/scripts/") ||
-        url.pathname.startsWith("/assets/") ||
-        url.pathname.startsWith("/defaultSource/") ||
-        url.pathname.startsWith("/favicon") ||
-        url.pathname.startsWith("/apps/")
+        pathname.startsWith("/scripts/") ||
+        pathname.startsWith("/assets/") ||
+        pathname.startsWith("/defaultSource/") ||
+        pathname.startsWith("/favicon") ||
+        pathname.startsWith("/apps/")
     ) {
-        log("bypassing navigation interception", url.pathname)
+        log("bypassing navigation interception", pathname)
         return fetch(request)
     }
 
     log("serving launcher")
-    return serveLauncher()
+    return serveLauncher(launcherPath)
 }
 
-function createHtmlInjector(head, loaderDiv) {
-    const encoder = new TextEncoder()
-    const decoder = new TextDecoder()
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
 
+function createHtmlInjector(head, loaderDiv) {
     let injected = false
     let buffer = ""
 
     return new TransformStream({
         transform(chunk, controller) {
-            buffer += decoder.decode(chunk, { stream: true })
-
-            if (!injected) {
-                const headMatch = /<head[^>]*>/i.exec(buffer)
-
-                if (headMatch) {
-                    injected = true
-
-                    const insertAt = headMatch.index + headMatch[0].length
-
-                    let html =
-                        buffer.slice(0, insertAt) +
-                        head +
-                        buffer.slice(insertAt)
-
-                    if (loaderDiv) {
-                        const bodyMatch = /<body[^>]*>/i.exec(html)
-
-                        if (bodyMatch) {
-                            const bodyInsertAt =
-                                bodyMatch.index + bodyMatch[0].length
-
-                            html =
-                                html.slice(0, bodyInsertAt) +
-                                loaderDiv +
-                                html.slice(bodyInsertAt)
-                        }
-                    }
-
-                    controller.enqueue(
-                        encoder.encode(html)
-                    )
-
-                    buffer = ""
-                    return
-                }
-
-                if (buffer.length > 8192) {
-                    controller.enqueue(
-                        encoder.encode(buffer.slice(0, 4096))
-                    )
-
-                    buffer = buffer.slice(4096)
-                }
-
+            if (injected) {
+                controller.enqueue(chunk)
                 return
             }
 
-            controller.enqueue(
-                encoder.encode(buffer)
-            )
+            buffer += decoder.decode(chunk, { stream: true })
 
+            const headMatch = /<head[^>]*>/i.exec(buffer)
+            if (!headMatch) {
+                if (buffer.length > 8192) {
+                    controller.enqueue(encoder.encode(buffer.slice(0, 4096)))
+                    buffer = buffer.slice(4096)
+                }
+                return
+            }
+
+            injected = true
+            const insertAt = headMatch.index + headMatch[0].length
+            let html = buffer.slice(0, insertAt) + head + buffer.slice(insertAt)
+
+            if (loaderDiv) {
+                const bodyMatch = /<body[^>]*>/i.exec(html)
+                if (bodyMatch) {
+                    const bi = bodyMatch.index + bodyMatch[0].length
+                    html = html.slice(0, bi) + loaderDiv + html.slice(bi)
+                }
+            }
+
+            controller.enqueue(encoder.encode(html))
             buffer = ""
         },
 
         flush(controller) {
+            if (!buffer) return
+
             if (!injected) {
                 let html = buffer
-
                 const headMatch = /<head[^>]*>/i.exec(html)
                 if (headMatch) {
                     const insertAt = headMatch.index + headMatch[0].length
@@ -207,20 +169,15 @@ function createHtmlInjector(head, loaderDiv) {
                 } else {
                     html = head + html
                 }
-
                 if (loaderDiv) {
                     const bodyMatch = /<body[^>]*>/i.exec(html)
                     if (bodyMatch) {
-                        const insertAt = bodyMatch.index + bodyMatch[0].length
-                        html = html.slice(0, insertAt) + loaderDiv + html.slice(insertAt)
+                        const bi = bodyMatch.index + bodyMatch[0].length
+                        html = html.slice(0, bi) + loaderDiv + html.slice(bi)
                     }
                 }
-
                 controller.enqueue(encoder.encode(html))
-                return
-            }
-
-            if (buffer) {
+            } else {
                 controller.enqueue(encoder.encode(buffer))
             }
         }
@@ -231,77 +188,62 @@ const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
 
 const manifestCache = new LRU(30)
-
-const vfsCache = new LRU(100)
-
+const vfsBlobCache = new LRU(20)
 const injectedScriptCache = new LRU(30)
+const liveReloadBodyCache = new LRU(20)
 
-const liveReloadCache = new LRU(20)
+const vfsBlobRevalidating = new Map()
+const manifestRevalidating = new Map()
 
-async function cachedReadFile(vfsPath) {
-    if (vfsCache.has(vfsPath)) {
-        revalidateVfs(vfsPath)
-        return vfsCache.get(vfsPath)
+async function cachedStreamFile(vfsPath) {
+    const cached = vfsBlobCache.get(vfsPath)
+    if (cached !== undefined) {
+        scheduleRevalidateBlob(vfsPath)
+        return { type: "file", file: cached }
     }
-    const result = await readFile(vfsPath)
-    if (result?.type === "file") vfsCache.set(vfsPath, result)
+    const result = await streamFile(vfsPath)
+    if (result?.type === "file") vfsBlobCache.set(vfsPath, result.file)
     return result
 }
 
-async function revalidateVfs(vfsPath) {
-    const fresh = await readFile(vfsPath).catch(() => null)
-    if (fresh?.type === "file") vfsCache.set(vfsPath, fresh)
-    else if (fresh === null || fresh?.type !== "file") vfsCache.delete(vfsPath)
+function scheduleRevalidateBlob(vfsPath) {
+    if (vfsBlobRevalidating.has(vfsPath)) return
+    const p = streamFile(vfsPath)
+        .then(fresh => {
+            if (fresh?.type === "file") vfsBlobCache.set(vfsPath, fresh.file)
+            else vfsBlobCache.delete(vfsPath)
+        })
+        .catch(() => vfsBlobCache.delete(vfsPath))
+        .finally(() => vfsBlobRevalidating.delete(vfsPath))
+    vfsBlobRevalidating.set(vfsPath, p)
 }
 
 function getLauncherPath() {
     const cfg = self.__OZONE_CONFIG__
     if (!cfg?.launcher) return null
-
     const { author, name } = cfg.launcher
-
     if (!author || !name) return null
-
     return `/system/apps/${author}/${name}/index.html`
 }
 
-async function serveLauncher() {
-    const launcherPath = getLauncherPath()
-
+async function serveLauncher(launcherPath) {
     log("serveLauncher", { launcherPath })
 
-    if (!launcherPath) {
-        log("launcher missing, fallback /")
-        return fetch("/")
-    }
+    const parts = launcherPath.replace(/^\/system\/apps\//, "").split("/")
 
-    const parts = launcherPath
-        .replace(/^\/system\/apps\//, "")
-        .split("/")
-
-    log("launcher parts", parts)
-
-    const streamed = await cachedStreamFile(launcherPath)
+    const [streamed, manifest] = await Promise.all([
+        cachedStreamFile(launcherPath),
+        getManifest(`/system/apps/${parts[0]}/${parts[1]}/manifest.json`)
+    ])
 
     if (!streamed || streamed.type !== "file") {
         log("launcher file missing")
         return new Response("Launcher missing", { status: 404 })
     }
 
-    const manifestPath =
-        `/system/apps/${parts[0]}/${parts[1]}/manifest.json`
-
-    log("loading launcher manifest", manifestPath)
-
-    const manifest = await getManifest(manifestPath)
-
     log("launcher manifest", manifest)
 
-    const iconSvg =
-        typeof manifest?.icon === "string"
-            ? manifest.icon
-            : ""
-
+    const iconSvg = typeof manifest?.icon === "string" ? manifest.icon : ""
     const { head, loaderDiv } = buildInjectedScript(iconSvg)
 
     const injectedHead =
@@ -322,65 +264,39 @@ async function serveLauncher() {
         }
     })
 }
-
-const vfsBlobCache = new LRU(20)
-
-async function cachedStreamFile(vfsPath) {
-    if (vfsBlobCache.has(vfsPath)) {
-        revalidateVfsBlob(vfsPath)
-        return { type: "file", file: vfsBlobCache.get(vfsPath) }
-    }
-    const result = await streamFile(vfsPath)
-    if (result?.type === "file") vfsBlobCache.set(vfsPath, result.file)
-    return result
-}
-
-async function revalidateVfsBlob(vfsPath) {
-    const fresh = await streamFile(vfsPath).catch(() => null)
-    if (fresh?.type === "file") vfsBlobCache.set(vfsPath, fresh.file)
-    else vfsBlobCache.delete(vfsPath)
-}
-
 async function getManifest(manifestPath) {
     if (!manifestPath) return null
 
-    if (manifestCache.has(manifestPath)) {
-        const entry = manifestCache.get(manifestPath)
-        if (!entry.revalidating) {
-            entry.revalidating = true
-            revalidateManifest(manifestPath).finally(() => {
-                const e = manifestCache.get(manifestPath)
-                if (e) e.revalidating = false
-            })
-        }
-        return entry.value
+    const entry = manifestCache.get(manifestPath)
+    if (entry !== undefined) {
+        scheduleRevalidateManifest(manifestPath)
+        return entry
     }
 
     const value = await fetchManifest(manifestPath)
-    manifestCache.set(manifestPath, { value, revalidating: false })
+    manifestCache.set(manifestPath, value)
     return value
 }
 
 async function fetchManifest(manifestPath) {
     const mf = await readFile(manifestPath).catch(() => null)
     if (!mf || mf.type !== "file") return null
-    try {
-        return JSON.parse(new TextDecoder().decode(mf.data))
-    } catch {
-        return null
-    }
+    try { return JSON.parse(new TextDecoder().decode(mf.data)) }
+    catch { return null }
 }
 
-async function revalidateManifest(manifestPath) {
-    const fresh = await fetchManifest(manifestPath)
-    const entry = manifestCache.get(manifestPath)
-    if (entry) entry.value = fresh
-    else manifestCache.set(manifestPath, { value: fresh, revalidating: false })
+function scheduleRevalidateManifest(manifestPath) {
+    if (manifestRevalidating.has(manifestPath)) return
+    const p = fetchManifest(manifestPath)
+        .then(fresh => manifestCache.set(manifestPath, fresh))
+        .catch(() => { })
+        .finally(() => manifestRevalidating.delete(manifestPath))
+    manifestRevalidating.set(manifestPath, p)
 }
 
 function buildInjectedScript(iconSvg = "") {
-    const cacheKey = iconSvg
-    if (injectedScriptCache.has(cacheKey)) return injectedScriptCache.get(cacheKey)
+    const cached = injectedScriptCache.get(iconSvg)
+    if (cached !== undefined) return cached
 
     const loaderDiv = iconSvg
         ? `<div id="_app_loader"><div id="_app_loader_icon">${iconSvg}</div></div>`
@@ -398,9 +314,7 @@ html.app-ready {overflow: auto;}
     background: inherit;
     pointer-events: none;
 }
-#_app_loader_icon {
-    width: 72px; height: 72px;
-}
+#_app_loader_icon { width: 72px; height: 72px; }
 #_app_loader_icon svg { width: 100%; height: 100%; }
 </style>
 <script>
@@ -430,27 +344,26 @@ html.app-ready {overflow: auto;}
             })
         }
         static init() {
-           navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
-    if (d?.type === "rpc-res") {
-        SWBridge.#wait.get(d.id)?.(d.result)
-        SWBridge.#wait.delete(d.id)
-
-    } else if (d?.type === "from-sw" && d.action === "apps.open") {
-        try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
-        catch { console.error("Invalid URL from SW:", d.url) }
-
-    } else if (d?.type === "sys-dialog") {
-        handleSystemDialog(d)
-    }
-})
+            navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
+                if (d?.type === "rpc-res") {
+                    SWBridge.#wait.get(d.id)?.(d.result)
+                    SWBridge.#wait.delete(d.id)
+                } else if (d?.type === "from-sw" && d.action === "apps.open") {
+                    try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
+                    catch { console.error("Invalid URL from SW:", d.url) }
+                } else if (d?.type === "sys-dialog") {
+                    handleSystemDialog(d)
+                }
+            })
         }
     }
     SWBridge.init()
 
     const proxyCache = new Map()
     function createProxy(path) {
-        if (proxyCache.has(path)) return proxyCache.get(path)
-        const p = new Proxy(() => {}, {
+        let p = proxyCache.get(path)
+        if (p) return p
+        p = new Proxy(() => {}, {
             get(_, prop) { return createProxy(path + '.' + prop) },
             apply(_, __, args) { return SWBridge.call(path, ...args) }
         })
@@ -463,42 +376,30 @@ html.app-ready {overflow: auto;}
             if (prop === "apps") return {
                 open: async (path, params, mode) => {
                     const result = await SWBridge.call("apps.open", path, params, mode)
-
                     if (typeof result === "string") {
                         window.open(result, "_blank", "noopener,noreferrer")
                         return null
                     }
-
-                    const screenWidth = window.screen.availWidth
-                    const screenHeight = window.screen.availHeight
-                    const maxWidth = screenWidth * 0.8
-                    const maxHeight = screenHeight * 0.8
-                    let width = maxWidth
-                    let height = width * (6 / 9)
-                    if (height > maxHeight) { height = maxHeight; width = height * (9 / 6) }
-                    height = Math.min(height, maxHeight)
-                    width = Math.min(width, maxWidth)
-                    const left = Math.max(0, (screenWidth - width) / 2)
-                    const top = Math.max(0, (screenHeight - height) / 2)
-
-                    const popup = _open.call(window,
-                        result.url,
-                        "_blank",
-                        \`popup=yes,width=\${Math.floor(width)},height=\${Math.floor(height)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`
-                    )
-
+                    const sw = window.screen
+                    const maxW = sw.availWidth  * 0.8
+                    const maxH = sw.availHeight * 0.8
+                    let w = maxW, h = w * (6 / 9)
+                    if (h > maxH) { h = maxH; w = h * (9 / 6) }
+                    h = Math.min(h, maxH); w = Math.min(w, maxW)
+                    const left = Math.max(0, (sw.availWidth  - w) / 2)
+                    const top  = Math.max(0, (sw.availHeight - h) / 2)
+                    const popup = _open.call(window, result.url, "_blank",
+                        \`popup=yes,width=\${Math.floor(w)},height=\${Math.floor(h)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`)
                     const pollClose = setInterval(async () => {
                         if (popup?.closed) {
                             clearInterval(pollClose)
                             await SWBridge.call("apps.notifyPopupClosed", result.responseId)
                         }
                     }, 500)
-
                     const value = await SWBridge.call("apps.waitForResponse", result.responseId)
                     clearInterval(pollClose)
                     return value
                 },
-
                 respond: async (value) => {
                     const params = await SWBridge.call("apps.getParams", __paramsId)
                     if (params?.__responseId) {
@@ -508,226 +409,80 @@ html.app-ready {overflow: auto;}
                     }
                 }
             }
-
-                if (prop === "params") {
-                    if (!window.__appParamsCache) {
-                        window.__appParamsCache = SWBridge.call("apps.getParams", __paramsId)
-                    }
-                    return window.__appParamsCache
-                }
-
+            if (prop === "params") {
+                if (!window.__appParamsCache)
+                    window.__appParamsCache = SWBridge.call("apps.getParams", __paramsId)
+                return window.__appParamsCache
+            }
             return createProxy(prop)
         }
     })
-       function handleSystemDialog({ dialogType, message, defaultValue }) {
-    switch (dialogType) {
-        case "alert":
-            alert(message)
-            break
 
-        case "confirm":
-            const result = confirm(message)
-            navigator.serviceWorker.controller?.postMessage({
-                type: "dialog-response",
-                value: result
-            })
-            break
-
-        case "prompt":
-            const value = prompt(message, defaultValue ?? "")
-            navigator.serviceWorker.controller?.postMessage({
-                type: "dialog-response",
-                value
-            })
-            break
+    function handleSystemDialog({ dialogType, message, defaultValue }) {
+        switch (dialogType) {
+            case "alert":
+                alert(message)
+                break
+            case "confirm":
+                navigator.serviceWorker.controller?.postMessage({
+                    type: "dialog-response", value: confirm(message)
+                })
+                break
+            case "prompt":
+                navigator.serviceWorker.controller?.postMessage({
+                    type: "dialog-response", value: prompt(message, defaultValue ?? "")
+                })
+                break
+        }
     }
-}
 })()
 </script>`,
         loaderDiv
     }
 
-    injectedScriptCache.set(cacheKey, result)
+    injectedScriptCache.set(iconSvg, result)
     return result
 }
 
-const liveReloadBodyCache = new LRU(20)
+const HTML_CT = "text/html"
+const COOP_HEADER = "Cross-Origin-Opener-Policy"
+const COOP_VALUE = "same-origin"
 
-const HTML_HEADERS = { "Content-Type": "text/html", "Cross-Origin-Opener-Policy": "same-origin" }
-const ASSET_HEADERS = { "Cross-Origin-Opener-Policy": "same-origin" }
+async function route(request, url, parts) {
+    log("route:start", { url: request.url, parts })
 
-async function route(request, parts) {
-    log("route:start", {
-        url: request.url,
-        parts
-    })
+    const isShared = parts[0] === "sharedAssets"
 
-    const rawUrl = request.url
-    const lrIdx = rawUrl.indexOf("livereload=")
+    if (isShared) {
+        if (parts.length < 2) return new Response("Forbidden", { status: 403 })
+    } else if (!parts[0] || !parts[1] || parts[0].includes("/") || parts[1].includes("/")) {
+        return new Response("Forbidden", { status: 403 })
+    }
 
-    const liveReloadUrl = lrIdx !== -1
-        ? new URL(rawUrl).searchParams.get("livereload")
-        : null
-
-    log("route:livereload", {
-        lrIdx,
-        liveReloadUrl
-    })
-
-    const isShared =
-        parts[0] === "sharedAssets"
-    const appKey =
-        isShared
-            ? ""
-            : parts[1] + "/" + parts[2]
-    log("route:app", {
-        isShared,
-        appKey
-    })
+    const appKey = isShared ? "" : `${parts[1]}/${parts[2]}`
     const vfsPath = isShared
-        ? SHARED_PREFIX +
-        (parts.length > 1
-            ? parts.slice(1).join("/")
-            : "index.html")
-        : APPS_PREFIX +
-        parts[1] +
-        "/" +
-        parts[2] +
-        "/" +
-        (parts.length > 3
-            ? parts.slice(3).join("/")
-            : "index.html")
+        ? SHARED_PREFIX + (parts.length > 1 ? parts.slice(1).join("/") : "index.html")
+        : `${APPS_PREFIX}${parts[1]}/${parts[2]}/${parts.length > 3 ? parts.slice(3).join("/") : "index.html"}`
 
     log("route:vfsPath", vfsPath)
 
-    if (isShared) {
-        if (parts.length < 2) {
-            return new Response("Forbidden", { status: 403 })
-        }
-    } else {
-        if (
-            !parts[0] ||
-            !parts[1] ||
-            parts[0].includes("/") ||
-            parts[1].includes("/")
-        ) {
-            return new Response("Forbidden", { status: 403 })
-        }
+    const liveBase = liveReloadBases.get(appKey)
+    const lrParam = url.searchParams.get("livereload")
+
+    const assetPath = parts.length > 2 ? parts.slice(2).join("/") : "index.html"
+
+    let resolvedLiveUrl = lrParam
+    if (!resolvedLiveUrl && liveBase) {
+        resolvedLiveUrl = isShared
+            ? `${liveBase.replace(/\/$/, "")}/${(url.searchParams.get("sharedAssetsURL") || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "")}/${parts.slice(3).join("/")}`
+            : `${liveBase.replace(/\/[^/]*$/, "/")}${assetPath}`
     }
 
-    const liveBase = liveReloadBases.get(appKey)
-
-    const assetPath =
-        parts.length > 2
-            ? parts.slice(2).join("/")
-            : "index.html"
-
-    const sharedAssetsURL =
-        new URL(rawUrl).searchParams.get("sharedAssetsURL")
-
-    const resolvedLiveUrl =
-        liveReloadUrl ??
-        (
-            liveBase
-                ? (
-                    isShared
-                        ? (
-                            liveBase.replace(/\/$/, "") +
-                            "/" +
-                            (sharedAssetsURL || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "") +
-                            "/" +
-                            parts.slice(3).join("/")
-                        )
-                        : liveBase.replace(/\/[^/]*$/, "/") + assetPath
-                )
-                : null
-        )
-    log("live reload resolved", {
-        resolvedLiveUrl
-    })
-    const manifestPath = !isShared
-        ? APPS_PREFIX + parts[1] + "/" + parts[2] + "/manifest.json"
-        : null
-    const manifest = await getManifest(manifestPath)
-
-    const iconSvg =
-        typeof manifest?.icon === "string"
-            ? manifest.icon
-            : ""
-
-    const { head, loaderDiv } = buildInjectedScript(iconSvg)
+    log("live reload resolved", { resolvedLiveUrl })
 
     if (resolvedLiveUrl) {
-        const cacheEntry = liveReloadBodyCache.get(resolvedLiveUrl)
-
-        const networkFetch = fetch(resolvedLiveUrl)
-            .then(async res => {
-                if (!res.ok) return
-                const ct = (res.headers.get("Content-Type") ?? "text/html")
-                    .split(";")[0].trim()
-                const buffer = await res.arrayBuffer()
-                liveReloadBodyCache.set(resolvedLiveUrl, { buffer, ct })
-            })
-            .catch(() => null)
-
-        if (cacheEntry) {
-            log("live reload cache hit", {
-                resolvedLiveUrl
-            })
-
-            const { buffer, ct } = cacheEntry
-            const headers = new Headers({
-                "Content-Type": ct,
-                "Cross-Origin-Opener-Policy": "same-origin"
-            })
-
-            if (ct !== "text/html") {
-                return new Response(buffer, { headers })
-            }
-
-            if (liveReloadUrl && !isShared) {
-                liveReloadBases.set(appKey, liveReloadUrl)
-            }
-
-            const stream = new Blob([buffer])
-                .stream()
-                .pipeThrough(createHtmlInjector(head, loaderDiv))
-
-            headers.set("Content-Type", "text/html")
-            return new Response(stream, { headers })
-        }
-
-        const res = await networkFetch.then(() => {
-            const entry = liveReloadBodyCache.get(resolvedLiveUrl)
-            return entry ?? null
-        })
-
-        if (!res) return new Response("LiveReload error", { status: 500 })
-
-        log("live reload fetched from network", {
-            resolvedLiveUrl
-        })
-
-        const { buffer, ct } = res
-        const headers = new Headers({
-            "Content-Type": ct,
-            "Cross-Origin-Opener-Policy": "same-origin"
-        })
-
-        if (ct !== "text/html") return new Response(buffer, { headers })
-
-        if (liveReloadUrl && !isShared) {
-            liveReloadBases.set(appKey, liveReloadUrl)
-        }
-
-        const stream = new Blob([buffer])
-            .stream()
-            .pipeThrough(createHtmlInjector(head, loaderDiv))
-
-        headers.set("Content-Type", "text/html")
-        return new Response(stream, { headers })
+        return handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsPath)
     }
-
     const streamed = await cachedStreamFile(vfsPath)
 
     if (!streamed || streamed.type !== "file") {
@@ -736,32 +491,62 @@ async function route(request, parts) {
     }
 
     const contentType = mimeFromPath(vfsPath)
+    log("serving asset", { vfsPath, contentType })
 
-    log("serving asset", {
-        vfsPath,
-        contentType
-    })
-
-    if (contentType !== "text/html") {
-        return new Response(
-            streamed.file.stream(),
-            {
-                headers: {
-                    "Content-Type": contentType,
-                    "Cross-Origin-Opener-Policy": "same-origin"
-                }
-            }
-        )
+    if (contentType !== HTML_CT) {
+        return new Response(streamed.file.stream(), {
+            headers: { "Content-Type": contentType, [COOP_HEADER]: COOP_VALUE }
+        })
     }
 
-    const stream = streamed.file
-        .stream()
-        .pipeThrough(createHtmlInjector(head, loaderDiv))
+     const manifestPath = !isShared
+        ? `${APPS_PREFIX}${parts[1]}/${parts[2]}/manifest.json`
+        : null
+    const manifest = await getManifest(manifestPath)
+    const iconSvg = typeof manifest?.icon === "string" ? manifest.icon : ""
+    const { head, loaderDiv } = buildInjectedScript(iconSvg)
 
-    return new Response(stream, {
-        headers: {
-            "Content-Type": "text/html",
-            "Cross-Origin-Opener-Policy": "same-origin"
-        }
-    })
+    return new Response(
+        streamed.file.stream().pipeThrough(createHtmlInjector(head, loaderDiv)),
+        { headers: { "Content-Type": HTML_CT, [COOP_HEADER]: COOP_VALUE } }
+    )
+}
+
+async function handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsPath) {
+    const cacheEntry = liveReloadBodyCache.get(resolvedLiveUrl)
+
+    const networkPromise = fetch(resolvedLiveUrl)
+        .then(async res => {
+            if (!res.ok) return null
+            const ct = (res.headers.get("Content-Type") ?? HTML_CT).split(";")[0].trim()
+            const buffer = await res.arrayBuffer()
+            const entry = { buffer, ct }
+            liveReloadBodyCache.set(resolvedLiveUrl, entry)
+            return entry
+        })
+        .catch(() => null)
+
+    const entry = cacheEntry !== undefined
+        ? (networkPromise, cacheEntry)
+        : await networkPromise
+
+    if (!entry) return new Response("LiveReload error", { status: 500 })
+
+    const { buffer, ct } = entry
+    const headers = new Headers({ "Content-Type": ct, [COOP_HEADER]: COOP_VALUE })
+
+    if (ct !== HTML_CT) return new Response(buffer, { headers })
+
+    if (lrParam && !isShared) liveReloadBases.set(appKey, lrParam)
+
+    const manifestPath = !isShared
+        ? vfsPath.replace(/\/[^/]+$/, "/manifest.json")
+        : null
+    const manifest = await getManifest(manifestPath)
+    const iconSvg = typeof manifest?.icon === "string" ? manifest.icon : ""
+    const { head, loaderDiv } = buildInjectedScript(iconSvg)
+
+    const stream = new Blob([buffer]).stream().pipeThrough(createHtmlInjector(head, loaderDiv))
+    headers.set("Content-Type", HTML_CT)
+    return new Response(stream, { headers })
 }

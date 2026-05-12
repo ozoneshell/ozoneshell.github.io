@@ -107,7 +107,7 @@ export class Ozone {
     )
 
     const swUrl =
-      `/sw.js?v=${v}&launcher=${launcher}&log=true`
+      `/sw.js?v=${v}&launcher=${launcher}`
 
     const existing = await navigator.serviceWorker.getRegistration()
 
