@@ -13,7 +13,7 @@ var state = {
 };
 
 async function buildTree(dir) {
-    const entries = await api.files.list(dir)
+    const entries = await api.fileUtil.list(dir)
 
     const node = {
         name: dir.split("/").filter(Boolean).pop() || dir,
@@ -261,7 +261,7 @@ class FileItem {
             if (state.mode == "file_selector") {
                 api.apps.respond(this.item.path)
             } else {
-                api.files.open(this.item.path)
+                api.fileUtil.open(this.item.path)
             }
         }
     }
@@ -272,7 +272,7 @@ async function renderFiles(path = state.path) {
     container.innerHTML = ""
     state.path = path;
 
-    const items = await api.files.list(path)
+    const items = await api.fileUtil.list(path)
 
     for (const item of items) {
         new FileItem(item, container)
@@ -289,7 +289,7 @@ function importFiles() {
 input.addEventListener("change", async e => {
     for (const file of e.target.files) {
         const content = await file.arrayBuffer()
-        await api.files.write(`downloads/${file.name}`, content)
+        await api.fileSet.write(`downloads/${file.name}`, content)
     }
 })
 
@@ -307,16 +307,16 @@ const actionMap = {
         renderFiles();
     },
     delete_folder: async () => {
-        await api.files.remove(state.chosen_path)
+        await api.fileSet.remove(state.chosen_path)
         renderFiles();
         render();
     },
 
     open_file: () => {
-        api.files.open(state.chosen_path)
+        api.fileUtil.open(state.chosen_path)
     },
     delete_file: async () => {
-        await api.files.remove(state.chosen_path)
+        await api.fileSet.remove(state.chosen_path)
         renderFiles();
     },
 

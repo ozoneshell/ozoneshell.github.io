@@ -1,5 +1,6 @@
 import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
 import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
+import { registerWindow } from "./scripts/sw-registry.js"
 import { mimeFromPath } from "./scripts/utility.js"
 
 ensureRoot()
@@ -81,15 +82,36 @@ self.addEventListener("fetch", e => {
             }
         }
 
-        e.respondWith(route(request, url, parts))
+        e.respondWith(
+            route(request, url, parts).then(response => {
+                if (e.clientId && parts.length >= 3) {
+                    const appKey = `${parts[1]}/${parts[2]}`
+                    const paramsId = url.searchParams.get("paramsId") ?? null
+                    registerWindow(e.clientId, appKey, paramsId)
+                }
+                return response
+            })
+        )
         return
     }
 
     if (request.mode === "navigate") {
         log("navigation request", pathname)
-        e.respondWith(handleNavigation(request, pathname))
+        e.respondWith(
+            handleNavigation(request, pathname).then(response => {
+                const cfg = self.__OZONE_CONFIG__
+                if (e.clientId && cfg?.launcher) {
+                    const { author, name } = cfg.launcher
+                    registerWindow(e.clientId, `${author}/${name}`, null)
+                }
+                return response
+            })
+        )
     }
 })
+
+import { debugRegistry } from "./scripts/sw-registry.js"
+self.__debug = { registry: debugRegistry }
 
 async function handleNavigation(request, pathname) {
     const launcherPath = getLauncherPath()

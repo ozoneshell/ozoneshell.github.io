@@ -1,5 +1,6 @@
 import { ensureRoot, writeFile } from "/scripts/vfs.js"
 import { settings } from "/scripts/utility.js"
+import { rpc } from "/scripts/sw-api.js"
 
 export class Ozone {
   constructor(config = {}) {
@@ -25,77 +26,23 @@ export class Ozone {
     if (!res.ok) throw new Error(`Failed fetch: ${url}`)
     return res.json()
   }
-
-  async packageAppFromURL(appURL) {
-    const manifestURL = `${appURL}/manifest.json`
-    const res = await fetch(manifestURL)
-    if (!res.ok) return
-
-    const data = await res.json()
-
-    const base = `/system/apps/${data.author}/${data.name}`
-    const sources = data.sources || []
-
-    await settings.set(`${data.author}/${data.name}`, base, "TagPathIndex.json")
-
-    if (data.capabilities) {
-      const FileBindings = (await settings.get("FileBindings")) ?? {}
-      const key = `${data.author}/${data.name}`
-
-      for (const ext of data.capabilities) {
-        FileBindings[ext] = [
-          ...new Set([...(FileBindings[ext] ?? []), key])
-        ]
-      }
-
-      await settings.set("FileBindings", FileBindings)
-    }
-
-    await Promise.all(
-      sources.map(async file => {
-        const fileURL = `${appURL}/${file}`
-        const r = await fetch(fileURL)
-        if (!r.ok) return
-        const blob = await r.blob()
-        await writeFile(`${base}/${file}`, blob)
-      })
-    )
-
-    if (data.landing) {
-      const landingURL = `${appURL}/${data.landing}`
-      const lr = await fetch(landingURL)
-      if (lr.ok) {
-        const blob = await lr.blob()
-        await writeFile(`${base}/index.html`, blob)
-      }
-    }
-
-    const manifestBlob = new Blob(
-      [JSON.stringify(data, null, 2)],
-      { type: "application/json" }
-    )
-
-    await writeFile(`${base}/manifest.json`, manifestBlob)
-  }
-
   async initializeOzone() {
     for (const app of this.config.defaultApps) {
       const url = `${this.config.sourceURL}/${app}`
-      await this.packageAppFromURL(url)
+      await rpc.store.installFromURL(url)
     }
 
-    const shared = this.config.sharedAssets
-
-    for (const file of shared) {
-      const url = `${this.config.sourceURL}/sharedAssets/${file}`
-      const res = await fetch(url)
-      if (!res.ok) continue
-      const blob = await res.blob()
-      await writeFile(`/system/sharedAssets/${file}`, blob)
-    }
-    return true;
+    await Promise.all(
+      this.config.sharedAssets.map(async file => {
+        const url = `${this.config.sourceURL}/sharedAssets/${file}`
+        const res = await fetch(url)
+        if (!res.ok) return
+        const blob = await res.blob()
+        await rpc.fileSet.write(`/system/sharedAssets/${file}`, blob)
+      })
+    )
+    return true
   }
-
   async ensureServiceWorker() {
     if (!("serviceWorker" in navigator)) return
 

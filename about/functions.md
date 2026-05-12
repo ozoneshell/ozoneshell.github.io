@@ -11,7 +11,7 @@ script.js
 - make sure sw exists: ensureSW
 - initialize ozone: initializeOzone
 - download shared assets: copySharedAssets
-- clone app from URL: packageAppFromURL(appURL)
+- clone app from URL: installURLasApp(appURL)
 - log in ozone CLI: log(text)
 - open file: openFile(path)
 

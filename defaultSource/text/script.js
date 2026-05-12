@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const textarea = document.getElementById("main_input");
 
     async function loadFile() {
-        const file = await api.files.read(path);
+        const file = await api.fileGet.read(path);
         if (!file) {
             textarea.value = "";
             return;
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function saveFile() {
         const data = textarea.value;
         const encoded = new TextEncoder().encode(data);
-        await api.files.write(path, encoded);
+        await api.fileSet.write(path, encoded);
     }
 
     loadFile();

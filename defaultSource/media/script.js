@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const player = document.getElementById("main_media_element");
 
     async function loadFile() {
-        const file = await api.files.read(path);
+        const file = await api.fileGet.read(path);
 
         if (!file) {
             player.src = "";

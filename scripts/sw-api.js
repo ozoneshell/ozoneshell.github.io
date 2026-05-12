@@ -1,21 +1,101 @@
 
 import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
 import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
+import { appParams, pendingResponses, liveReloadBases, getWindowEntry, isNamespaceAllowed } from "./sw-registry.js"
 
-export const appParams = new Map()
-export const pendingResponses = new Map()
-export const liveReloadBases = new Map()
+export { appParams, pendingResponses, liveReloadBases }
+
+var appsRPCHandler = {
+    async open(path, params = {}, mode) {
+        const key = path.replace(/^\/+|\/+$/g, "")
+        const hasParams = Object.keys(params).length > 0 || mode === "popup"
+        const paramsId = hasParams ? crypto.randomUUID() : null
+        const url = `/apps/${key}/${paramsId ? `?paramsId=${paramsId}` : ""}`
+
+        if (paramsId) {
+            const storedParams = mode === "popup"
+                ? { ...params, __responseId: crypto.randomUUID() }
+                : { ...params }
+
+            appParams.set(paramsId, storedParams)
+
+            if (mode === "popup") {
+                pendingResponses.set(storedParams.__responseId, {
+                    resolve: null,
+                    settled: false,
+                    value: undefined
+                })
+                return { url, responseId: storedParams.__responseId, popup: true }
+            }
+        }
+
+        return url
+    },
+
+    getParams(paramsId) {
+        if (!paramsId) return {}
+        return appParams.get(paramsId) || {}
+    },
+
+    waitForResponse(responseId) {
+        return new Promise(resolve => {
+            const entry = pendingResponses.get(responseId)
+            if (!entry) return resolve(null)
+            if (entry.settled) return resolve(entry.value)
+
+            const timer = setTimeout(() => {
+                entry.settled = true
+                entry.value = null
+                pendingResponses.delete(responseId)
+                resolve(null)
+            }, 5 * 60 * 1000)
+
+            entry.resolve = (val) => {
+                clearTimeout(timer)
+                entry.settled = true
+                entry.value = val
+                pendingResponses.delete(responseId)
+                resolve(val)
+            }
+        })
+    },
+
+    respond(responseId, value) {
+        const entry = pendingResponses.get(responseId)
+        if (entry?.resolve) entry.resolve(value)
+        else if (entry) {
+            entry.settled = true
+            entry.value = value
+        }
+    },
+
+    notifyPopupClosed(responseId) {
+        const entry = pendingResponses.get(responseId)
+        if (!entry || entry.settled) return
+
+        setTimeout(() => {
+            const latest = pendingResponses.get(responseId)
+            if (!latest || latest.settled) return
+            latest.resolve?.(null)
+            pendingResponses.delete(responseId)
+        }, 100)
+    }
+}
 
 export const rpc = {
-    files: {
+    fileGet: {
         read: readFile,
-        write: writeFile,
         stream: streamFile,
-        list,
-        exists,
+    },
+    fileSet: {
+        write: writeFile,
         mkdir,
         mkdirp,
         remove,
+    },
+    fileUtil: {
+        list,
+        exists,
         open: openFile
     },
     utility: {
@@ -26,85 +106,105 @@ export const rpc = {
         ensureRoot,
         parentOf
     },
+    apps: appsRPCHandler,
+    settings,
+    store: {
+        async installFromURL(appURL) {
+            try {
+                const res = await fetch(`${appURL}/manifest.json`)
 
-    apps: {
-        async open(path, params = {}, mode) {
-            const key = path.replace(/^\/+|\/+$/g, "")
-            const hasParams = Object.keys(params).length > 0 || mode === "popup"
-            const paramsId = hasParams ? crypto.randomUUID() : null
-            const url = `/apps/${key}/${paramsId ? `?paramsId=${paramsId}` : ""}`
+                if (!res.ok) {
+                    return {
+                        ok: false,
+                        error: `manifest fetch failed: ${res.status}`
+                    }
+                }
 
-            if (paramsId) {
-                const storedParams = mode === "popup"
-                    ? { ...params, __responseId: crypto.randomUUID() }
-                    : { ...params }
+                const data = await res.json()
 
-                appParams.set(paramsId, storedParams)
+                const sources = data.sources || []
+                const files = {}
 
-                if (mode === "popup") {
-                    pendingResponses.set(storedParams.__responseId, {
-                        resolve: null,
-                        settled: false,
-                        value: undefined
+                await Promise.all(
+                    sources.map(async file => {
+                        try {
+                            const r = await fetch(`${appURL}/${file}`)
+
+                            if (!r.ok) {
+                                console.warn(`missing file: ${file}`)
+                                return
+                            }
+
+                            files[file] = await r.blob()
+                        } catch (err) {
+                            console.warn(`failed fetching ${file}`, err)
+                        }
                     })
-                    return { url, responseId: storedParams.__responseId, popup: true }
+                )
+
+                if (data.landing) {
+                    try {
+                        const r = await fetch(`${appURL}/${data.landing}`)
+
+                        if (r.ok) {
+                            files["index.html"] = await r.blob()
+                        } else {
+                            console.warn(`landing file missing: ${data.landing}`)
+                        }
+                    } catch (err) {
+                        console.warn(`failed fetching landing file`, err)
+                    }
+                }
+
+                files["manifest.json"] = new Blob(
+                    [JSON.stringify(data, null, 2)],
+                    { type: "application/json" }
+                )
+
+                const path = await rpc.store.install(
+                    data.author,
+                    data.name,
+                    files,
+                    data
+                )
+
+                return {
+                    ok: true,
+                    path
+                }
+            } catch (err) {
+                console.error(err)
+
+                return {
+                    ok: false,
+                    error: err.message
                 }
             }
-
-            return url
         },
 
-        getParams(paramsId) {
-            if (!paramsId) return {}
-            return appParams.get(paramsId) || {}
-        },
+        async install(author, name, files, manifest) {
+            const base = `/system/apps/${author}/${name}`
 
-        waitForResponse(responseId) {
-            return new Promise(resolve => {
-                const entry = pendingResponses.get(responseId)
-                if (!entry) return resolve(null)
-                if (entry.settled) return resolve(entry.value)
+            await settings.set(`${author}/${name}`, base, "TagPathIndex.json")
 
-                const timer = setTimeout(() => {
-                    entry.settled = true
-                    entry.value = null
-                    pendingResponses.delete(responseId)
-                    resolve(null)
-                }, 5 * 60 * 1000)
-
-                entry.resolve = (val) => {
-                    clearTimeout(timer)
-                    entry.settled = true
-                    entry.value = val
-                    pendingResponses.delete(responseId)
-                    resolve(val)
+            if (manifest.capabilities) {
+                const FileBindings = (await settings.get("FileBindings")) ?? {}
+                const key = `${author}/${name}`
+                for (const ext of manifest.capabilities) {
+                    FileBindings[ext] = [...new Set([...(FileBindings[ext] ?? []), key])]
                 }
-            })
-        },
-
-        respond(responseId, value) {
-            const entry = pendingResponses.get(responseId)
-            if (entry?.resolve) entry.resolve(value)
-            else if (entry) {
-                entry.settled = true
-                entry.value = value
+                await settings.set("FileBindings", FileBindings)
             }
-        },
 
-        notifyPopupClosed(responseId) {
-            const entry = pendingResponses.get(responseId)
-            if (!entry || entry.settled) return
+            await Promise.all(
+                Object.entries(files).map(([file, blob]) =>
+                    writeFile(`${base}/${file}`, blob)
+                )
+            )
 
-            setTimeout(() => {
-                const latest = pendingResponses.get(responseId)
-                if (!latest || latest.settled) return
-                latest.resolve?.(null)
-                pendingResponses.delete(responseId)
-            }, 100)
+            return base
         }
-    },
-
-    settings
+    }
 }
 
 export function resolveRpc(path) {
@@ -114,6 +214,17 @@ export function resolveRpc(path) {
 export async function handleRpcMessage(e) {
     const d = e.data
     if (d?.type !== "rpc") return
+
+    const clientId = e.source?.id ?? null
+    const entry = clientId ? getWindowEntry(clientId) : null
+    const appKey = entry?.appKey ?? null
+
+    const namespace = d.method.split(".")[0]
+    if (!isNamespaceAllowed(appKey, namespace)) {
+        console.warn(`[SW] RPC blocked: ${appKey ?? "unregistered"} → ${d.method}`)
+        e.source.postMessage({ type: "rpc-res", id: d.id, result: null, blocked: true })
+        return
+    }
 
     const fn = resolveRpc(d.method)
     let result = null
