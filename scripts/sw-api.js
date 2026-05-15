@@ -2,6 +2,7 @@
 import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
 import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
 import { appParams, pendingResponses, liveReloadBases, getWindowEntry, isNamespaceAllowed } from "./sw-registry.js"
+import { sysDialog } from "./utility.js"
 
 export { appParams, pendingResponses, liveReloadBases }
 
@@ -100,7 +101,11 @@ export const rpc = {
     },
     utility: {
         getMime: mimeFromPath,
-        norm
+        getNamespaces: ()=> {
+            return Object.keys(rpc);
+        },
+        norm,
+        sysDialog
     },
     system: {
         ensureRoot,
@@ -178,7 +183,7 @@ export const rpc = {
             if (metadata) {
                 await settings.set(
                     `${author}/${name}`,
-                    { permissions: metadata.permissions },
+                    { icon: metadata.icon, permissions: metadata.permissions },
                     "appRegistry.json"
                 )
 

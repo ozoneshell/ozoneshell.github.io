@@ -168,7 +168,7 @@ dialog.sd-dialog {
     min-width: 19em;
     min-height: 10em;
     outline: none;
-    display: flex;
+    display: none;
     max-width: 500px;
 
     &>.sd-container {

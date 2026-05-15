@@ -1,8 +1,16 @@
+:root {
+    --calcW: calc(100% - 4em);
+}
+
 .settings_section {
-    display: flex;
+    display: none;
     align-items: center;
     flex-direction: column;
     gap: .5em;
+
+    &.active {
+        display: flex;
+    }
 
     &>.grouped_settings,
     &>.label {
@@ -10,15 +18,30 @@
     }
 
     &>.label {
-        width: calc(100% - 4em);
+        width: var(--calcW);
         padding: .5em;
         font-size: 1.5em;
         margin-top: 1em;
+        display: flex;
+        flex-direction: row;
+        gap: .3em;
+
+        &>.backbtn {
+            padding: 6px;
+            background: var(--two);
+            border-radius: 50%;
+            font-size: 18px;
+            line-height: 0;
+            display: flex;
+            align-items: center;
+            aspect-ratio: 1 / 1;
+            justify-content: center;
+        }
     }
 
     &>.grouped_settings {
         max-width: 1000px;
-        width: calc(100% - 4em);
+        width: var(--calcW);
         display: flex;
         flex-direction: column;
         gap: .2em;
@@ -67,12 +90,12 @@
     transition: .5s cubic-bezier(0.075, 0.82, 0.165, 1);
 }
 
-.setting_toggle.checked {
+.checked .setting_toggle {
     border-color: var(--highlight);
     background-position: right;
 }
 
-.setting_toggle.checked::after {
+.checked .setting_toggle::after {
     left: 1.75em;
     background: var(--highdark);
 }
@@ -158,6 +181,45 @@
             &:last-child {
                 border-radius: 0 0 .5em .5em;
             }
+        }
+    }
+}
+
+#appList {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    width: var(--calcW);
+    display: grid;
+    max-width: 1000px;
+    gap: .5em;
+}
+
+.app {
+    display: flex;
+    flex-direction: row;
+    gap: .5em;
+    padding: .8em;
+    background-color: var(--two);
+    border-radius: 1em;
+    align-items: center1;
+
+    &>.icon {
+        height: 2.5em;
+        aspect-ratio: 1/1;
+
+        &>svg {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    &>.data {
+        display: inherit;
+        flex-direction: column;
+        gap: .2em;
+
+        &>.desc {
+            opacity: .5;
+            font-size: small;
         }
     }
 }

@@ -100,6 +100,8 @@ class InputSetting {
     }
 }
 
+var state = {}
+
 const settings = {}
 document.querySelectorAll("[data-setting]").forEach(el => {
     let instance = null
@@ -132,3 +134,138 @@ async function loadSettings() {
 }
 
 loadSettings()
+
+function switchSection(sectionId, obj) {
+    const sections = document.querySelectorAll('.settings_section');
+    sections.forEach(section => {
+        section.classList.remove('active');
+    });
+
+    document.querySelector(".sidebar>.button.active")?.classList.remove("active");
+    obj?.classList.add("active")
+    const target = document.getElementById(sectionId);
+    if (target) {
+        target.classList.add('active');
+        screenHandlers[sectionId]();
+    }
+}
+
+function createAppCard({
+    appname = "AppName",
+    icon = "",
+    author = "Unknown Author",
+    desc = "No description",
+    perms = []
+}) {
+    const fallbackIcon = `
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3">
+            <path d="M440-183v-274L200-596v274l240 139Zm80 0 240-139v-274L520-457v274Zm-40-343 237-137-237-137-237 137 237 137ZM160-252q-19-11-29.5-29T120-321v-318q0-22 10.5-40t29.5-29l280-161q19-11 40-11t40 11l280 161q19 11 29.5 29t10.5 40v318q0 22-10.5 40T800-252L520-91q-19 11-40 11t-40-11L160-252Zm320-228Z"/>
+        </svg>
+    `;
+
+    const app = document.createElement("div");
+    app.className = "app";
+    app.addEventListener("click", () => {
+        state.detAppData = { appname, author, perms }
+        switchSection("appDetail")
+    })
+
+    app.innerHTML = `
+        <div class="icon">
+            ${icon || fallbackIcon}
+        </div>
+
+        <div class="data">
+            <div class="name">${appname}</div>
+            <div class="desc">${author} &bull; ${desc}</div>
+        </div>
+    `;
+
+    return app;
+}
+const screenHandlers = {
+    apps: async () => {
+        const appListE = document.getElementById("appList");
+        appListE.innerHTML = "";
+
+        let listOfApps = await api.settings.get("all", "appRegistry.json");
+
+        Object.keys(listOfApps).forEach(item => {
+            const [author, appName] = item.split("/");
+
+            let element = createAppCard({
+                appname: appName,
+                icon: listOfApps[item].icon,
+                author,
+                desc: listOfApps[item].permissions?.length + " Allowed",
+                perms: listOfApps[item].permissions
+            });
+
+            appListE.appendChild(element);
+        });
+    },
+
+    general: () => {
+
+    },
+
+    appDetail: async () => {
+        document.getElementById("appDetAppName").innerText =
+            state.detAppData.appname;
+
+        let allNmsps = await api.utility.getNamespaces();
+
+        let appPermList = document.getElementById("appPermList");
+        appPermList.innerHTML = "";
+
+        allNmsps.forEach(element => {
+            const settingUnit = document.createElement("div");
+            settingUnit.className = "setting_unit";
+
+            const settingText = document.createElement("div");
+            settingText.className = "setting_text";
+            settingText.textContent = element;
+
+            const settingToggle = document.createElement("div");
+            settingToggle.className = "setting_toggle";
+            settingToggle.dataset.setting = "toggleSetting";
+
+            settingUnit.append(settingText, settingToggle);
+            appPermList.appendChild(settingUnit);
+
+            let set = new ToggleSetting(settingUnit);
+
+            if (state.detAppData?.perms?.includes(element))
+                set.toggle();
+
+            set.onChange = async (value) => {
+                const appKey =
+                    `${state.detAppData.author}/${state.detAppData.appname}`;
+
+                let registry = await api.settings.get(
+                    "all",
+                    "appRegistry.json"
+                );
+
+                if (!registry[appKey].permissions)
+                    registry[appKey].permissions = [];
+
+                let perms = registry[appKey].permissions;
+
+                if (value) {
+                    if (!perms.includes(element))
+                        perms.push(element);
+                } else {
+                    registry[appKey].permissions =
+                        perms.filter(p => p !== element);
+                }
+
+                await api.settings.set(
+                    appKey,
+                    registry[appKey],
+                    "appRegistry.json"
+                );
+            };
+        });
+    }
+};

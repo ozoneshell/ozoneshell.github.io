@@ -14,26 +14,18 @@
     <div class="flex x">
         <div class="flex fit y sidebar">
             <div class="label">Ozone</div>
-            <div class="button active">
+            <div class="button active" onclick="switchSection('general', this)">
                 <div class="icon">build</div>
                 <div class="fill">General</div>
             </div>
-            <div class="button">
-                <div class="icon">keyboard_arrow_up</div>
-                <div class="fill">Mounts</div>
-            </div>
             <div class="label">Apps</div>
-            <div class="button">
+            <div class="button" onclick="switchSection('apps', this)">
                 <div class="icon">apps</div>
                 <div class="fill">Installed</div>
             </div>
-            <div class="button">
-                <div class="icon">brush</div>
-                <div class="fill">Theme</div>
-            </div>
         </div>
         <div class="flex fill y">
-            <div class="settings_section fill">
+            <div class="settings_section fill active" id="general">
                 <div class="label">Basics</div>
                 <div class="grouped_settings">
                     <div class="setting_unit">
@@ -41,6 +33,20 @@
                             Sorry, this Ozone version does not support customized settings.
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="settings_section fill" id="apps">
+                <div class="label">Installed</div>
+                <div id="appList">
+                </div>
+            </div>
+            <div class="settings_section fill" id="appDetail">
+                <div class="label">
+                    <span class="icon backbtn button">arrow_back</span>
+                    <span id="appDetAppName"></span>
+                </div>
+                <div id="appPermList" class="grouped_settings">
+
                 </div>
             </div>
         </div>

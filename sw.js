@@ -1,7 +1,7 @@
 import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
 import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
 import { registerWindow } from "./scripts/sw-registry.js"
-import { mimeFromPath } from "./scripts/utility.js"
+import { mimeFromPath, sysDialog } from "./scripts/utility.js"
 
 ensureRoot()
 
@@ -128,7 +128,7 @@ async function handleNavigation(request, pathname) {
         pathname.startsWith("/scripts/") ||
         pathname.startsWith("/assets/") ||
         pathname.startsWith("/defaultSource/") ||
-        pathname.startsWith("/favicon") 
+        pathname.startsWith("/favicon")
     ) {
         log("bypassing navigation interception", pathname)
         return fetch(request)
@@ -491,7 +491,9 @@ async function route(request, url, parts) {
     const liveBase = liveReloadBases.get(appKey)
     const lrParam = url.searchParams.get("livereload")
 
-    const assetPath = parts.length > 2 ? parts.slice(2).join("/") : "index.html"
+    const assetPath = parts.length > 3
+        ? parts.slice(3).join("/")
+        : "index.html"
 
     let resolvedLiveUrl = lrParam
     if (!resolvedLiveUrl && liveBase) {
@@ -539,18 +541,34 @@ async function handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsP
 
     const networkPromise = fetch(resolvedLiveUrl)
         .then(async res => {
+            console.log("LR fetch", resolvedLiveUrl, res.status)
+
             if (!res.ok) return null
-            const ct = (res.headers.get("Content-Type") ?? HTML_CT).split(";")[0].trim()
+
+            const ct = (res.headers.get("Content-Type") ?? HTML_CT)
+                .split(";")[0]
+                .trim()
+
             const buffer = await res.arrayBuffer()
+
             const entry = { buffer, ct }
+
             liveReloadBodyCache.set(resolvedLiveUrl, entry)
+
             return entry
         })
-        .catch(() => null)
+        .catch(err => {
+            console.error("LR fetch failed", resolvedLiveUrl, err)
+            return null
+        })
+    let entry
 
-    const entry = cacheEntry !== undefined
-        ? (networkPromise, cacheEntry)
-        : await networkPromise
+    if (cacheEntry !== undefined) {
+        entry = cacheEntry
+        networkPromise.catch(() => { })
+    } else {
+        entry = await networkPromise
+    }
 
     if (!entry) return new Response("LiveReload error", { status: 500 })
 
