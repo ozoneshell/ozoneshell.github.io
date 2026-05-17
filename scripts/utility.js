@@ -100,6 +100,9 @@ var settings = {
     }
 }
 
+let dialogId = 0
+const pendingDialogs = new Map()
+
 async function openFile(path) {
     const fileExt = getExtension(path);
     let appTag = (await settings.get("FileBindings"))?.[fileExt]?.[0];
@@ -119,13 +122,29 @@ async function sysDialog({ message = "", type = "alert", defaultValue = "" }) {
     })
 
     const target = clientsList.find(c => c.focused) ?? clientsList[0]
-    if (!target) return
+    if (!target) return null
 
-    target.postMessage({
-        type: "sys-dialog",
-        dialogType: type,
-        message,
-        defaultValue
+    if (type === "alert") {
+        target.postMessage({
+            type: "sys-dialog",
+            dialogType: type,
+            message,
+            defaultValue
+        })
+        return
+    }
+
+    return new Promise(resolve => {
+        const id = ++dialogId
+        pendingDialogs.set(id, resolve)
+
+        target.postMessage({
+            type: "sys-dialog",
+            id,
+            dialogType: type,
+            message,
+            defaultValue
+        })
     })
 }
 
@@ -137,5 +156,6 @@ export {
     writeJSON,
     settings,
     openFile,
-    sysDialog
+    sysDialog,
+    pendingDialogs
 }

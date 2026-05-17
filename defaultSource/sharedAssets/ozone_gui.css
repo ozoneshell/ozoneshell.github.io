@@ -348,3 +348,12 @@ input.button {
         color: var(--hightext);
     }
 }
+
+@keyframes pageSwap {
+    0% {
+        transform: translateY(5px) scale(.9);
+    }
+    100% {
+        transform: 0;
+    }
+}

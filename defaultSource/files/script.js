@@ -337,10 +337,33 @@ const actionMap = {
     column_view: () => setView("column"),
 
     // to be implemented
-    rename_folder: () => { },
+    rename_folder: () => {
+        const oldname = state.chosen_path.split("/").pop()
+        api.utility.sysDialog({ message: "Rename file:", type: "prompt", defaultValue: oldname })
+    },
     open_with: () => openWith(),
     export_file: () => exportFile(),
-    rename_file: () => renameFile(),
+    rename_file: async () => {
+        const oldPath = state.chosen_path
+
+        const oldName = oldPath.split("/").pop()
+
+        const newName =
+            await api.utility.sysDialog({
+                message: "Rename file:",
+                type: "prompt",
+                defaultValue: oldName
+            }) ?? oldName
+
+        if (!newName || newName === oldName) {
+            console.log("eh", newName, oldName)
+            return
+        }
+
+        const newPath = oldPath.replace(/[^/]+$/, newName)
+
+        await api.fileSet.move(oldPath, newPath)
+    }
 }
 
 document.addEventListener("click", e => {

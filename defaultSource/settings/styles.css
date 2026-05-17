@@ -4,17 +4,16 @@
 
 .settings_section {
     display: none;
-    align-items: center;
     flex-direction: column;
     gap: .5em;
+    width: min(var(--calcW), 100%);
+    max-width: 1000px;
+    margin: auto;
+    align-items: stretch;
+    animation: pageSwap .3s cubic-bezier(0.075, 0.82, 0.165, 1);
 
     &.active {
         display: flex;
-    }
-
-    &>.grouped_settings,
-    &>.label {
-        max-width: 1000px;
     }
 
     &>.label {
@@ -40,8 +39,6 @@
     }
 
     &>.grouped_settings {
-        max-width: 1000px;
-        width: var(--calcW);
         display: flex;
         flex-direction: column;
         gap: .2em;
@@ -189,7 +186,6 @@
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     width: var(--calcW);
     display: grid;
-    max-width: 1000px;
     gap: .5em;
 }
 

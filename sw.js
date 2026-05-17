@@ -366,7 +366,7 @@ html.app-ready {overflow: auto;}
             })
         }
         static init() {
-            navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
+            navigator.serviceWorker.addEventListener("message", ({ data: d, source }) => {
                 if (d?.type === "rpc-res") {
                     SWBridge.#wait.get(d.id)?.(d.result)
                     SWBridge.#wait.delete(d.id)
@@ -374,7 +374,7 @@ html.app-ready {overflow: auto;}
                     try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
                     catch { console.error("Invalid URL from SW:", d.url) }
                 } else if (d?.type === "sys-dialog") {
-                    handleSystemDialog(d)
+                    handleSystemDialog(d, source)
                 }
             })
         }
@@ -440,20 +440,21 @@ html.app-ready {overflow: auto;}
         }
     })
 
-    function handleSystemDialog({ dialogType, message, defaultValue }) {
+    function handleSystemDialog({ dialogType, message, defaultValue, id }, source) {
+        const reply = (payload) => {
+            const channel = source || navigator.serviceWorker.controller
+            channel?.postMessage(payload)
+        }
+
         switch (dialogType) {
             case "alert":
                 alert(message)
                 break
             case "confirm":
-                navigator.serviceWorker.controller?.postMessage({
-                    type: "dialog-response", value: confirm(message)
-                })
+                reply({ type: "dialog-response", id, value: confirm(message) })
                 break
             case "prompt":
-                navigator.serviceWorker.controller?.postMessage({
-                    type: "dialog-response", value: prompt(message, defaultValue ?? "")
-                })
+                reply({ type: "dialog-response", id, value: prompt(message, defaultValue ?? "") })
                 break
         }
     }

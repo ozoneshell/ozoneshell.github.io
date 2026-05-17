@@ -136,14 +136,16 @@ async function loadSettings() {
 loadSettings()
 
 function switchSection(sectionId, obj) {
+    const target = document.getElementById(sectionId);
+    if (obj) {
+        document.querySelector(".sidebar>.button.active")?.classList.remove("active");
+    }
     const sections = document.querySelectorAll('.settings_section');
     sections.forEach(section => {
         section.classList.remove('active');
     });
 
-    document.querySelector(".sidebar>.button.active")?.classList.remove("active");
     obj?.classList.add("active")
-    const target = document.getElementById(sectionId);
     if (target) {
         target.classList.add('active');
         screenHandlers[sectionId]();

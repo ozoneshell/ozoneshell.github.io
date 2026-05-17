@@ -1,8 +1,8 @@
 
-import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, streamFile, parentOf, norm } from "/scripts/vfs.js"
+import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, move, copy, streamFile, parentOf, norm } from "/scripts/vfs.js"
 import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
 import { appParams, pendingResponses, liveReloadBases, getWindowEntry, isNamespaceAllowed } from "./sw-registry.js"
-import { sysDialog } from "./utility.js"
+import { sysDialog, pendingDialogs } from "./utility.js"
 
 export { appParams, pendingResponses, liveReloadBases }
 
@@ -93,6 +93,8 @@ export const rpc = {
         mkdir,
         mkdirp,
         remove,
+        move,
+        copy
     },
     fileUtil: {
         list,
@@ -216,6 +218,15 @@ export function resolveRpc(path) {
 
 export async function handleRpcMessage(e) {
     const d = e.data
+    if (d?.type === "dialog-response") {
+        const resolve = pendingDialogs.get(d.id)
+        if (resolve) {
+            pendingDialogs.delete(d.id)
+            resolve(d.value)
+        }
+        return
+    }
+
     if (d?.type !== "rpc") return
 
     const clientId = e.source?.id ?? null
