@@ -124,6 +124,13 @@ async function handleNavigation(request, pathname) {
         return fetch(request)
     }
 
+    const url = new URL(request.url)
+
+    if (url.searchParams.get("launcher") === "false") {
+        log("launcher disabled via param")
+        return fetch(request)
+    }
+
     if (
         pathname.startsWith("/scripts/") ||
         pathname.startsWith("/assets/") ||

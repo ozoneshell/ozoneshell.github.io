@@ -1,18 +1,14 @@
 general
-- system wide encryption and password protection
+- app versioning
+- app loader toggle, registration for parent app handler support for nested app api calls
+- system version controller and updater
 
 ozone JS standard utility
 - overwritten upgraded set of alerts and system dialog functions
   - tooltip attribute
-  - confirm, alert
-  - choose from (list) confirm dialog. includes icon field per list item.
-    - can be used for selecting apps in the open with window
-- standardization for right click context menu
+  - can be used for selecting apps in the open with window
 
 files app
-- renaming
-- moving 
-- copying 
 - drag and drop to move
 - select files for bulk actions
 - zip file handling and ability to make them
@@ -23,5 +19,6 @@ files app
 installer wizard
 - choose file system backend: OPFS, IndexedDB
 
-pending:
-tooltips, styling all the rest dialog types, context menu
+store
+- better app preview
+- installing, unintalling and updating
