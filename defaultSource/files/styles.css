@@ -89,6 +89,10 @@
     grid-template-columns: repeat(auto-fill, 10em);
     justify-content: start;
     padding: .5em;
+    overflow-y: auto;
+    height: calc(100vh - 10.5em);
+    align-items: start;
+    align-content: start;
 
     &>.singular_file {
         display: flex;
