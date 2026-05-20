@@ -3,7 +3,8 @@
     "author": "ozone",
     "description": "An app to launch other apps.",
     "permissions": [
-        "files"
+        "fileUtil",
+        "fileGet"
     ],
     "landing": "index.html",
     "sources": [

@@ -350,12 +350,27 @@ html.app-ready {overflow: auto;}
 (() => {
     if (window.opener) { try { window.opener = null } catch {} }
     window.addEventListener("load", () => document.documentElement.classList.add("app-ready"))
+window.addEventListener("pagehide", async () => {
+    if (__popupResponded) return
+
+    try {
+        const params = await SWBridge.call("apps.getParams", __paramsId)
+
+        if (params?.__responseId) {
+            await SWBridge.call(
+                "apps.notifyPopupClosed",
+                params.__responseId
+            )
+        }
+    } catch {}
+})
     const _open = window.open
     window.open = (url, target, features) =>
         _open.call(window, url, target || '_blank',
             features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
     const __paramsId = new URLSearchParams(location.search).get("paramsId") ?? ""
+    let __popupResponded = false
 
     class SWBridge {
         static #id = 0
@@ -417,26 +432,42 @@ html.app-ready {overflow: auto;}
                     h = Math.min(h, maxH); w = Math.min(w, maxW)
                     const left = Math.max(0, (sw.availWidth  - w) / 2)
                     const top  = Math.max(0, (sw.availHeight - h) / 2)
-                    const popup = _open.call(window, result.url, "_blank",
-                        \`popup=yes,width=\${Math.floor(w)},height=\${Math.floor(h)},left=\${Math.floor(left)},top=\${Math.floor(top)},noopener,noreferrer\`)
-                    const pollClose = setInterval(async () => {
-                        if (popup?.closed) {
-                            clearInterval(pollClose)
-                            await SWBridge.call("apps.notifyPopupClosed", result.responseId)
-                        }
-                    }, 500)
-                    const value = await SWBridge.call("apps.waitForResponse", result.responseId)
+                  const popup = _open.call(window, result.url, "_blank",
+    \`popup=yes,width=\${Math.floor(w)},height=\${Math.floor(h)},left=\${Math.floor(left)},top=\${Math.floor(top)}\`)
+
+                if (!popup) {
+                    await SWBridge.call("apps.notifyPopupClosed", result.responseId)
+                    return null
+                }
+
+                const pollClose = setInterval(async () => {
+                    if (popup.closed) {
+                        clearInterval(pollClose)
+                        await SWBridge.call("apps.notifyPopupClosed", result.responseId)
+                    }
+                }, 500)
+
+                const value = await SWBridge.call("apps.waitForResponse", result.responseId)
                     clearInterval(pollClose)
                     return value
                 },
-                respond: async (value) => {
-                    const params = await SWBridge.call("apps.getParams", __paramsId)
-                    if (params?.__responseId) {
-                        await SWBridge.call("apps.respond", params.__responseId, value)
-                        await new Promise(r => setTimeout(r, 50))
-                        window.close()
-                    }
-                }
+              respond: async (value) => {
+    const params = await SWBridge.call("apps.getParams", __paramsId)
+
+    if (params?.__responseId) {
+        __popupResponded = true
+
+        await SWBridge.call(
+            "apps.respond",
+            params.__responseId,
+            value
+        )
+
+        await new Promise(r => setTimeout(r, 50))
+
+        window.close()
+    }
+}
             }
             if (prop === "params") {
                 if (!window.__appParamsCache)

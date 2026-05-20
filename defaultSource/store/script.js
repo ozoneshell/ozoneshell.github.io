@@ -52,7 +52,7 @@ function createApp(app) {
 }
 
 async function loadApps() {
-    const res = await fetch("http://127.0.0.1:5500/defaultSource/app_map.json");
+    const res = await fetch("/defaultSource/app_map.json");
     const data = await res.json();
 
     grid.innerHTML = "";
@@ -83,13 +83,14 @@ const installer = {
     buttons: document.getElementById("installer_buttons")
 };
 
-function loadInstaller(app) {
+async function loadInstaller(app) {
     installer.cover.src = app.cover;
     installer.name.textContent = app.name;
     installer.desc.textContent = app.description;
 
     installer.buttons.innerHTML = "";
 
+    app.installed = await api.store.isInstalled(`${app.author}/${app.name}`);
     if (app.installed) {
         const openBtn = document.createElement("input");
         openBtn.type = "button";

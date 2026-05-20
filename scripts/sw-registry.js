@@ -23,6 +23,7 @@ export function getAppKeyForClient(clientId) {
 }
 
 export async function isNamespaceAllowed(appKey, namespace, clientId = null) {
+    return true; // permissions are turned off during BETA
     if (namespace === "apps") return true
 
     if (clientId) {

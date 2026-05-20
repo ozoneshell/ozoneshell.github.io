@@ -71,16 +71,18 @@ var appsRPCHandler = {
     },
 
     notifyPopupClosed(responseId) {
-        const entry = pendingResponses.get(responseId)
-        if (!entry || entry.settled) return
+    const entry = pendingResponses.get(responseId)
+    if (!entry || entry.settled) return
 
-        setTimeout(() => {
-            const latest = pendingResponses.get(responseId)
-            if (!latest || latest.settled) return
-            latest.resolve?.(null)
-            pendingResponses.delete(responseId)
-        }, 100)
+    entry.settled = true
+    entry.value = null
+
+    if (entry.resolve) {
+        entry.resolve(null)
     }
+
+    pendingResponses.delete(responseId)
+}
 }
 
 export const rpc = {
@@ -103,7 +105,7 @@ export const rpc = {
     },
     utility: {
         getMime: mimeFromPath,
-        getNamespaces: ()=> {
+        getNamespaces: () => {
             return Object.keys(rpc);
         },
         norm,
@@ -208,7 +210,11 @@ export const rpc = {
             )
 
             return base
-        }
+        },
+        
+        async isInstalled(tag) {
+            return await exists("system/apps/" + tag);
+        },
     }
 }
 
