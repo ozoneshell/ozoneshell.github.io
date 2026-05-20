@@ -389,22 +389,63 @@ async function mkdirp(path) {
 
 async function writeFile(path, data) {
   path = norm(path)
+
   await ensureRoot()
+
   const existing = await vfsresolvePath(path)
-  if (existing?.type === "folder") throw new Error(`Is a directory: ${path}`)
+
+  if (existing?.type === "folder") {
+    throw new Error(`Is a directory: ${path}`)
+  }
+
   await mkdirp(path.split("/").slice(0, -1).join("/") || "/")
-  const contentId = await writeBlob(data)
-  const now = Date.now()
-  if (existing) {
-    if (existing.contentId && existing.contentId !== contentId) {
+
+  let contentId
+
+  if (existing?.contentId) {
+    const buf =
+      typeof data === "string"
+        ? new TextEncoder().encode(data).buffer
+        : data instanceof Blob
+          ? await data.arrayBuffer()
+          : data
+
+    const newId = await sha1hex(buf)
+
+    if (newId === existing.contentId) {
+      contentId = existing.contentId
+    } else {
+      contentId = await writeBlob(buf)
       await releaseBlob(existing.contentId)
     }
-    await writeNode({ ...existing, contentId, meta: { ...existing.meta, modified: now } })
+  } else {
+    contentId = await writeBlob(data)
+  }
+
+  const now = Date.now()
+
+  if (existing) {
+    await writeNode({
+      ...existing,
+      contentId,
+      meta: {
+        ...existing.meta,
+        modified: now
+      }
+    })
   } else {
     const { parentNode, name } = await resolveParent(path)
+
     await writeNode({
-      id: uid(), name, parent: parentNode.id, type: "file", contentId,
-      meta: { created: now, modified: now }
+      id: uid(),
+      name,
+      parent: parentNode.id,
+      type: "file",
+      contentId,
+      meta: {
+        created: now,
+        modified: now
+      }
     })
   }
 }

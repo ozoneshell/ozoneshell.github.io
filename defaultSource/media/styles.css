@@ -31,13 +31,20 @@
     }
 }
 
-video {
-    font-size: 1em;
-    font-family: 'Courier New', Courier, monospace;
-    background-color: black;
+#media_container {
+    justify-content: center;
+    align-items: center;
+    display: flex;
     outline: 0;
-    color: var(--text);
-    border: 0;
     border-radius: .5em;
-    height: calc(100vh - 3.3em);
+    border: 0;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--two);
+    color: var(--text);
+    height: calc(100vh - 3.2em);
+    overflow: hidden;
+    &>* {
+        height: 100%;
+        width: 100%;
+    }
 }

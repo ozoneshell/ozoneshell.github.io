@@ -1,6 +1,15 @@
+body {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 1em;
+}
+
 #menu {
     display: flex;
     gap: 1em;
+    margin-top: 1em;
 }
 
 .app_shortcut {
@@ -12,13 +21,75 @@
     width: 4em;
     aspect-ratio: 1 / 1;
     cursor: pointer;
+    padding: .8em .5em;
+    border-radius: .5em;
+    transition: background-color .3s ;
 
     &>.app_icon {
-        background-color: white;
+        background-color: var(--two);
         padding: .5em;
-        color: black;
+        color: inherit;
         font-size: 1.5em;
         aspect-ratio: 1 / 1;
         border-radius: .5em;
+        align-items: center;
+        width: 1.2em;
+        height: 1.2em;
+        transition: transform .3s;
+
+        &>* {
+            height: 100%;
+            width: 100%;
+        }
+    }
+
+    &:hover {
+        background-color: var(--two);
+        &>.app_icon {
+            transform: scale(1.2);
+        }
+    }
+}
+
+.main_logo {
+    font-size: 4em;
+    margin: 0;
+}
+
+.searchbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 700px;
+    background-color: var(--two);
+    border-radius: .5em;
+    overflow: hidden;
+    transition: box-shadow .2s;
+
+    &:focus-within {
+        box-shadow: 0 5px .5em rgba(0, 0, 0, 0.228);
+    }
+
+    &>input {
+        background-color: transparent;
+        color: inherit;
+        font: inherit;
+        border: 0;
+        flex: 1;
+        min-width: none;
+        outline: 0;
+    }
+
+    &>* {
+        padding: .5em .8em;
+    }
+
+    &>.icon {
+        background-color: var(--three);
+        font-size: 1.3em;
+
+        &:hover {
+            background-color: var(--four);
+        }
     }
 }

@@ -266,8 +266,15 @@ async function serveLauncher(launcherPath) {
     ])
 
     if (!streamed || streamed.type !== "file") {
-        log("launcher file missing")
-        return new Response("Launcher missing", { status: 404 })
+        log("launcher file missing, falling back to network")
+        return fetch(new Request(location.pathname + location.search, {
+            method: "GET",
+            headers: request.headers,
+            mode: request.mode,
+            credentials: request.credentials,
+            cache: request.cache,
+            redirect: request.redirect
+        }))
     }
 
     log("launcher manifest", manifest)

@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             return `
             <div class="app_shortcut" data-tag="${tag}" onclick="openApp(this)">
-            <div class="app_icon">${name[0]}</div> 
+            <div class="app_icon">${items[tag]?.icon ?? name[0]}</div> 
             <div class="app_name">${name}</div> 
                 
             </div>
