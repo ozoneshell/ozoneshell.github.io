@@ -61,18 +61,26 @@ function resolvePath(path) {
 
     return "/system/settings/" + path.replace(/^\//, "")
 }
+
 async function readJSON(path) {
     path = resolvePath(path)
+
     if (!(await exists(path))) return {}
+
     const file = await readFile(path)
+
     if (!file?.data) return {}
+
     const text = new TextDecoder().decode(file.data)
+
     return JSON.parse(text || "{}")
 }
+
 async function writeJSON(path, data) {
     path = resolvePath(path)
 
     const dirPath = parentOf(path)
+
     if (dirPath) {
         await mkdirp(dirPath)
     }
@@ -84,19 +92,61 @@ var settings = {
     set: async function (key, value, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
+
         data[key] = value
+
         await writeJSON(file, data)
     },
+
     get: async function (key, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
-        return (key == "all") ? data : data[key];
+
+        return key === "all" ? data : data[key]
     },
+
     rem: async function (key, path = "general.json") {
         var file = resolvePath(path)
         var data = await readJSON(file)
+
         delete data[key]
+
         await writeJSON(file, data)
+    }
+}
+
+function resolveAppStoragePath(tag) {
+    if (!tag?.appKey) {
+        throw new Error("Missing appKey in tag")
+    }
+
+    return `/system/apps/${tag.appKey}/appStorage.json`
+}
+
+var appStorage = {
+    set: async function (key, value, tag) {
+        const path = resolveAppStoragePath(tag)
+        const data = await readJSON(path)
+
+        data[key] = value
+
+        await writeJSON(path, data)
+    },
+
+    get: async function (key, tag) {
+        const path = resolveAppStoragePath(tag)
+        const data = await readJSON(path)
+
+        return key === "all" ? data : data[key]
+    },
+
+    rem: async function (key, tag) {
+        const path = resolveAppStoragePath(tag)
+        const data = await readJSON(path)
+
+        delete data[key]
+
+        await writeJSON(path, data)
     }
 }
 
@@ -157,5 +207,6 @@ export {
     settings,
     openFile,
     sysDialog,
+    appStorage,
     pendingDialogs
 }

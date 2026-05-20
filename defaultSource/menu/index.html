@@ -10,9 +10,30 @@
 </head>
 
 <body>
+    <div class="editbtns">
+        <div class="btn">
+            <div class="icon">settings</div>
+        </div>
+    </div>
+    <img src="https://images.unsplash.com/photo-1511300636408-a63a89df3482?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        class="bgimg" alt="">
     <h1 class="main_logo">Ozone Shell</h1>
     <div class="searchbar">
-        <input type="text" placeholder="Search Google...">
+        <div class="setting_dropdown" id="searchEngineDrpDwn" data-setting="dropdownSetting">
+            <div class="current_element">
+                <div class="current_element_text">
+                    Google
+                </div>
+                <div class="icon">keyboard_arrow_down</div>
+            </div>
+            <div class="dropdown_content">
+                <div class="item">Bing</div>
+                <div class="item">DuckDuckGo</div>
+                <div class="item">Ecosia</div>
+                <div class="item">Startpage</div>
+            </div>
+        </div>
+        <input type="text" placeholder="Search Internet...">
         <div class="icon">search</div>
     </div>
     <div id="menu"></div>

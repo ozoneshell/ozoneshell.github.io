@@ -1,6 +1,6 @@
 
 import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, move, copy, streamFile, parentOf, norm } from "/scripts/vfs.js"
-import { mimeFromPath, openFile, settings } from "/scripts/utility.js"
+import { mimeFromPath, openFile, settings, appStorage } from "/scripts/utility.js"
 import { appParams, pendingResponses, liveReloadBases, getWindowEntry, isNamespaceAllowed } from "./sw-registry.js"
 import { sysDialog, pendingDialogs } from "./utility.js"
 
@@ -71,18 +71,18 @@ var appsRPCHandler = {
     },
 
     notifyPopupClosed(responseId) {
-    const entry = pendingResponses.get(responseId)
-    if (!entry || entry.settled) return
+        const entry = pendingResponses.get(responseId)
+        if (!entry || entry.settled) return
 
-    entry.settled = true
-    entry.value = null
+        entry.settled = true
+        entry.value = null
 
-    if (entry.resolve) {
-        entry.resolve(null)
+        if (entry.resolve) {
+            entry.resolve(null)
+        }
+
+        pendingResponses.delete(responseId)
     }
-
-    pendingResponses.delete(responseId)
-}
 }
 
 export const rpc = {
@@ -117,6 +117,7 @@ export const rpc = {
     },
     apps: appsRPCHandler,
     settings,
+    appStorage,
     store: {
         async installFromURL(appURL) {
             try {
@@ -211,7 +212,7 @@ export const rpc = {
 
             return base
         },
-        
+
         async isInstalled(tag) {
             return await exists("system/apps/" + tag);
         },
@@ -250,8 +251,13 @@ export async function handleRpcMessage(e) {
     let result = null
 
     try {
-        if (fn) result = await fn(...d.args)
-        else console.warn(d.method, "is not a valid endpoint")
+        if (fn) {
+            result = await fn(...d.args, {
+                appKey,
+                clientId,
+                method: d.method
+            })
+        } else console.warn(d.method, "is not a valid endpoint")
     } catch (err) {
         console.warn(err)
     }
