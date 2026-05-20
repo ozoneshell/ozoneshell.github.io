@@ -129,6 +129,7 @@ img.bgimg {
 .setting_dropdown {
     position: relative;
     min-width: 8em;
+    z-index: 99;
 
     &>.current_element {
         padding: .7em 1.1em;
@@ -180,6 +181,68 @@ img.bgimg {
     }
 }
 
+.grouped_settings {
+    display: flex;
+    flex-direction: column;
+    gap: .5em;
+
+    &>.setting_unit {
+        display: flex;
+        background-color: var(--two);
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: stretch;
+        padding: 1em;
+        border-radius: .5em;
+        gap: .5em;
+    }
+}
+
+.setting_button {
+    background-color: var(--highlight);
+    color: var(--highdark);
+    padding: .7em 1.1em;
+    font: inherit;
+    font-size: .9em;
+    border: 0;
+    border-radius: .5em;
+}
+
+.setting_input {
+    padding: .8em 0.5em;
+    font: inherit;
+    font-size: .9em;
+    border: 0;
+    border-radius: .5em;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    background-color: var(--one);
+    color: inherit;
+    text-align: center;
+    min-width: 0;
+    width: 8em;
+    outline: none;
+
+    &:focus {
+        box-shadow: 0 5px 0 -3px var(--highlight);
+    }
+}
+
+.inputs {
+    width: auto;
+    padding: 0;
+
+    &>input[type="text"] {
+        flex: 1;
+        text-align: inherit;
+        padding: .5em .7em;
+        border-radius: .5em;
+        margin-right: .5em;
+        background-color: var(--one);
+    }
+}
+
 .editbtns {
     position: absolute;
     top: 1em;
@@ -187,6 +250,7 @@ img.bgimg {
     display: flex;
     flex-direction: row;
     width: fit-content;
+
     &>* {
         padding: .5em;
         background-color: #ffffff1c;
@@ -195,6 +259,35 @@ img.bgimg {
         align-items: center;
         border-radius: .5em;
         cursor: pointer;
-        &>* {line-height: 1em;}
+
+        &>* {
+            line-height: 1em;
+        }
+    }
+}
+
+#editDialog {
+    width: 500px;
+    background: var(--one);
+    border: 0;
+    border-radius: .5em;
+    outline: none;
+    box-shadow: 0 5px 10px #000000ab;
+
+    &>.header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: .5em;
+        border-bottom: 1px solid var(--two);
+        margin-bottom: 1em;
+
+        &>span {
+            flex: 1;
+        }
+
+        &>.icon {
+            cursor: pointer;
+        }
     }
 }

@@ -54,10 +54,21 @@ function resolvePath(path) {
         return "/system/settings/general.json"
     }
 
-    if (!path) return "/system/settings/general.json"
+    if (!path) {
+        return "/system/settings/general.json"
+    }
 
-    if (path.startsWith("/system/settings/")) return path
-    if (path.startsWith("system/settings/")) return "/" + path
+    if (path.startsWith("/")) {
+        return path
+    }
+
+    if (path.startsWith("system/settings/")) {
+        return "/" + path
+    }
+
+    if (path.startsWith("/system/settings/")) {
+        return path
+    }
 
     return "/system/settings/" + path.replace(/^\//, "")
 }
@@ -114,13 +125,14 @@ var settings = {
         await writeJSON(file, data)
     }
 }
-
 function resolveAppStoragePath(tag) {
-    if (!tag?.appKey) {
-        throw new Error("Missing appKey in tag")
+    if (!tag?.appKey || typeof tag.appKey !== "string") {
+        throw new Error("Missing or invalid appKey in tag")
     }
 
-    return `/system/apps/${tag.appKey}/appStorage.json`
+    const cleanTag = tag.appKey.replace(/^\/+|\/+$/g, "")
+
+    return `/system/apps/${cleanTag}/appStorage.json`
 }
 
 var appStorage = {
@@ -134,6 +146,7 @@ var appStorage = {
     },
 
     get: async function (key, tag) {
+        console.log(tag)
         const path = resolveAppStoragePath(tag)
         const data = await readJSON(path)
 

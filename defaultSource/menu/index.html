@@ -11,10 +11,34 @@
 
 <body>
     <div class="editbtns">
-        <div class="btn">
+        <div class="btn" onclick="toggleSettings()">
             <div class="icon">settings</div>
         </div>
     </div>
+    <dialog id="editDialog">
+        <div class="header">
+            <span>Settings</span>
+            <div class="icon" onclick="editDialog.close()">close</div>
+        </div>
+        <div class="grouped_settings">
+            <div class="setting_unit flex y">
+                <div class="setting_text">
+                    Wallpaper
+                </div>
+                <div class="inputs">
+                    <input class="setting_input" type="text" value="" placeholder="Enter a URL" id="wallp">
+                </div>
+            </div>
+            <div class="setting_unit flex y">
+                <div class="setting_text">
+                    Greeting text
+                </div>
+                <div class="inputs">
+                    <input class="setting_input" type="text" value="" placeholder="Ozone Shell" id="gree">
+                </div>
+            </div>
+        </div>
+    </dialog>
     <img src="https://images.unsplash.com/photo-1511300636408-a63a89df3482?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
         class="bgimg" alt="">
     <h1 class="main_logo">Ozone Shell</h1>

@@ -71,3 +71,36 @@ class DropdownSetting {
 }
 let el = document.getElementById("searchEngineDrpDwn")
 var searchEngineDrpDwn = new DropdownSetting(el)
+
+let editDialog = document.querySelector("#editDialog");
+
+function toggleSettings() {
+    editDialog.showModal();
+}
+const fields = {
+    greeting: document.querySelector("#gree"),
+    wall: document.querySelector("#wallp")
+};
+
+
+const bgimg = document.querySelector(".bgimg");
+const mainLogo = document.querySelector(".main_logo");
+
+const apply = () => {
+    bgimg.src = fields.wall.value;
+    mainLogo.innerText = fields.greeting.value;
+};
+
+Object.entries(fields).forEach(async ([key, el]) => {
+    const saved = await api.appStorage.get(key);
+
+    if (saved !== null) {
+        el.value = saved;
+    }
+    apply();
+
+    el.addEventListener("input", async () => {
+        await api.appStorage.set(key, el.value);
+        apply();
+    });
+});

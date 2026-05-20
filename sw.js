@@ -82,9 +82,11 @@ self.addEventListener("fetch", e => {
             }
         }
 
+        const isShared = pathname.startsWith("/sharedAssets/")
+
         e.respondWith(route(request, url, parts))
 
-        if (e.clientId && parts.length >= 3) {
+        if (!isShared && e.clientId && parts.length >= 3) {
             const appKey = `${parts[1]}/${parts[2]}`
             const paramsId = url.searchParams.get("paramsId") ?? null
             rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
@@ -541,11 +543,23 @@ async function route(request, url, parts) {
         ? parts.slice(3).join("/")
         : "index.html"
 
-    let resolvedLiveUrl = lrParam
-    if (!resolvedLiveUrl && liveBase) {
+    let resolvedLiveUrl = null
+
+    if (lrParam) {
+        const base = lrParam.replace(/\/[^/?#]*(\?.*)?$/, "/")
+        if (!isShared) liveReloadBases.set(appKey, { base, ts: Date.now() })
         resolvedLiveUrl = isShared
-            ? `${liveBase.replace(/\/$/, "")}/${(url.searchParams.get("sharedAssetsURL") || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "")}/${parts.slice(3).join("/")}`
-            : `${liveBase.replace(/\/[^/]*$/, "/")}${assetPath}`
+            ? `${lrParam.replace(/\/$/, "")}/${(url.searchParams.get("sharedAssetsURL") || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "")}/${parts.slice(3).join("/")}`
+            : `${base}${assetPath}`
+    } else if (liveBase) {
+        const age = Date.now() - liveBase.ts
+        if (age < 5000) {
+            resolvedLiveUrl = isShared
+                ? `${liveBase.base.replace(/\/$/, "")}/${(url.searchParams.get("sharedAssetsURL") || "defaultSource/sharedAssets").replace(/^\/+|\/+$/g, "")}/${parts.slice(3).join("/")}`
+                : `${liveBase.base}${assetPath}`
+        } else {
+            liveReloadBases.delete(appKey)
+        }
     }
 
     log("live reload resolved", { resolvedLiveUrl })
@@ -622,8 +636,6 @@ async function handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsP
     const headers = new Headers({ "Content-Type": ct, [COOP_HEADER]: COOP_VALUE })
 
     if (ct !== HTML_CT) return new Response(buffer, { headers })
-
-    if (lrParam && !isShared) liveReloadBases.set(appKey, lrParam)
 
     const manifestPath = !isShared
         ? vfsPath.replace(/\/[^/]+$/, "/manifest.json")
