@@ -85,6 +85,10 @@ var appsRPCHandler = {
     }
 }
 
+// events
+const channels = new Map()
+const channelOwners = new Map()
+
 export const rpc = {
     fileGet: {
         read: readFile,
@@ -117,6 +121,47 @@ export const rpc = {
     },
     apps: appsRPCHandler,
     settings,
+    events: {
+        register(channelKey, { appKey } = {}) {
+            const key = channelKey || crypto.randomUUID()
+            if (!channels.has(key)) {
+                channels.set(key, new Set())
+                channelOwners.set(key, appKey)
+            }
+            return key
+        },
+
+        subscribe(channelKey, { clientId } = {}) {
+            if (!channels.has(channelKey)) return { ok: false, error: "unknown channel" }
+            channels.get(channelKey).add(clientId)
+            return { ok: true }
+        },
+
+        unsubscribe(channelKey, { clientId } = {}) {
+            channels.get(channelKey)?.delete(clientId)
+            return { ok: true }
+        },
+
+        async broadcast(channelKey, data, { appKey } = {}) {
+            const subs = channels.get(channelKey)
+            if (!subs) return { ok: false, error: "unknown channel" }
+
+            const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+            const clientMap = new Map(clientsList.map(c => [c.id, c]))
+
+            let sent = 0
+            for (const clientId of subs) {
+                const client = clientMap.get(clientId)
+                if (!client) {
+                    subs.delete(clientId)
+                    continue
+                }
+                client.postMessage({ type: "channel-event", channelKey, data, from: appKey })
+                sent++
+            }
+            return { ok: true, sent }
+        },
+    },
     appStorage,
     store: {
         async installFromURL(appURL) {

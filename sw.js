@@ -59,6 +59,25 @@ log("config", self.__OZONE_CONFIG__)
 
 self.addEventListener("message", handleRpcMessage)
 
+self.addEventListener("activate", e => {
+  log("activate")
+  e.waitUntil(
+    clients.claim().then(startClientPruner)
+  )
+})
+
+function startClientPruner() {
+  setInterval(async () => {
+    const live = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+    const liveIds = new Set(live.map(c => c.id))
+    for (const [, subs] of channels) {
+      for (const id of subs) {
+        if (!liveIds.has(id)) subs.delete(id)
+      }
+    }
+  }, 30_000)
+}
+
 self.addEventListener("fetch", e => {
     const { request } = e
     if (request.method !== "GET") return
@@ -482,6 +501,38 @@ window.addEventListener("pagehide", async () => {
                 if (!window.__appParamsCache)
                     window.__appParamsCache = SWBridge.call("apps.getParams", __paramsId)
                 return window.__appParamsCache
+            }
+            if (prop === "events") return {
+                async register(channelKey) {
+                    return SWBridge.call("events.register", channelKey ?? null)
+                },
+
+                async listen(channelKey, callback) {
+                    await SWBridge.call("events.subscribe", channelKey)
+
+                    if (!window.__channelListeners) {
+                    window.__channelListeners = new Map() 
+                    navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
+                        if (d?.type !== "channel-event") return
+                        const fns = window.__channelListeners.get(d.channelKey)
+                        if (fns) fns.forEach(fn => fn(d.data, d.from))
+                    })
+                    }
+
+                    if (!window.__channelListeners.has(channelKey))
+                    window.__channelListeners.set(channelKey, new Set())
+
+                    window.__channelListeners.get(channelKey).add(callback)
+
+                    return () => {
+                    window.__channelListeners.get(channelKey)?.delete(callback)
+                    SWBridge.call("events.unsubscribe", channelKey)
+                    }
+                },
+
+                async broadcast(channelKey, data) {
+                    return SWBridge.call("events.broadcast", channelKey, data)
+                },
             }
             return createProxy(prop)
         }
