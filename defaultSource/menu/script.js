@@ -85,22 +85,31 @@ const fields = {
 
 const bgimg = document.querySelector(".bgimg");
 const mainLogo = document.querySelector(".main_logo");
-
 const apply = () => {
-    bgimg.src = fields.wall.value;
-    mainLogo.innerText = fields.greeting.value;
+    if (fields.wall.value) {
+        bgimg.src = fields.wall.value;
+    }
+
+    if (fields.greeting.value) {
+        mainLogo.innerText = fields.greeting.value;
+    }
 };
 
-Object.entries(fields).forEach(async ([key, el]) => {
-    const saved = await api.appStorage.get(key);
+const init = async () => {
+    for (const [key, el] of Object.entries(fields)) {
+        const saved = await api.appStorage.get(key);
 
-    if (saved !== null) {
-        el.value = saved;
+        if (saved) {
+            el.value = saved;
+        }
+
+        el.addEventListener("input", async () => {
+            await api.appStorage.set(key, el.value);
+            apply();
+        });
     }
-    apply();
 
-    el.addEventListener("input", async () => {
-        await api.appStorage.set(key, el.value);
-        apply();
-    });
-});
+    apply();
+};
+
+init();

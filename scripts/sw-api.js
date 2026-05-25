@@ -163,6 +163,10 @@ export const rpc = {
         },
     },
     appStorage,
+    appEmbed: {
+        // create appembed
+        // distroy appembed
+    },
     store: {
         async installFromURL(appURL) {
             try {
