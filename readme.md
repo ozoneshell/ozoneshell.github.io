@@ -2,7 +2,7 @@
 
 Client side shared webapp runtime framework &bull; HTML, Vanilla JS, CSS. 
 
-By darkdot &bull; [Documentation](https://ozoneshell.readme.io/docs/getting-started) &bull; AGPL 3.0 &bull; `⚠️ BETA`
+By darkdot &bull; [Documentation](https://ozoneshell.readme.io/docs/getting-started) &bull; MPL 2.0 &bull; `⚠️ BETA`
 
 ## Subprojects
 - **Ozone Library**: Single JS library that turns your web app into an [Ozone instance](https://ozoneshell.readme.io/docs/instances). 
