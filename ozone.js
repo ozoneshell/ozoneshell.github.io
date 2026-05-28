@@ -6,7 +6,6 @@ export class Ozone {
   constructor(config = {}) {
     this.config = {
       defaultApps: ["files", "settings", "text", "media", "menu"],
-      sourceURL: "/defaultSource",
       sharedAssets: [
         "google_sans.ttf",
         "icons.woff2",
@@ -15,7 +14,8 @@ export class Ozone {
       ],
       swKey: "osware_sw_version",
       dbName: "vfs",
-      versionURL: "/versions.json",
+      sourceURL: new URL("./defaultSource", import.meta.url).pathname,
+      versionURL: new URL("./versions.json", import.meta.url).pathname,
       launcher: null,
       ...config
     }
@@ -53,8 +53,12 @@ export class Ozone {
       JSON.stringify(this.config.launcher ?? null)
     )
 
-    const swUrl =
-      `/sw.js?v=${v}&launcher=${launcher}`
+    const sw = new URL("./sw.js", import.meta.url)
+
+    sw.searchParams.set("v", v)
+    sw.searchParams.set("launcher", launcher)
+
+    const swUrl = sw.toString()
 
     const existing = await navigator.serviceWorker.getRegistration()
 
