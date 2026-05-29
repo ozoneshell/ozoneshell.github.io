@@ -1,13 +1,14 @@
 
 import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, move, copy, streamFile, parentOf, norm } from "/scripts/vfs.js"
 import { mimeFromPath, openFile, settings, appStorage } from "/scripts/utility.js"
-import { appParams, pendingResponses, liveReloadBases, getWindowEntry, isNamespaceAllowed } from "./sw-registry.js"
+import { appParams, pendingResponses, liveReloadBases, getWindowEntry, windowRegistry, isNamespaceAllowed } from "./sw-registry.js"
 import { sysDialog, pendingDialogs } from "./utility.js"
 
 export { appParams, pendingResponses, liveReloadBases }
 
 var appsRPCHandler = {
-    async open(path, params = {}, mode) {
+    async open(path, params, mode) {
+        params = params ?? {}
         const key = path.replace(/^\/+|\/+$/g, "")
         const hasParams = Object.keys(params).length > 0 || mode === "popup"
         const paramsId = hasParams ? crypto.randomUUID() : null
@@ -164,8 +165,14 @@ export const rpc = {
     },
     appStorage,
     appEmbed: {
-        // create appembed
-        // distroy appembed
+        async create(appTag) {
+            const eventch = rpc.events.register(0, { appTag: appTag });
+            const appURL = new URL(
+                `apps/${appTag}?OzoneAppEmbed=${eventch}`,
+                SW_URL
+            ).href
+            return { appURL, eventch }
+        }
     },
     store: {
         async installFromURL(appURL) {
@@ -286,7 +293,63 @@ export async function handleRpcMessage(e) {
     if (d?.type !== "rpc") return
 
     const clientId = e.source?.id ?? null
-    const entry = clientId ? getWindowEntry(clientId) : null
+    let entry = clientId
+        ? getWindowEntry(clientId)
+        : null
+
+    if (!entry && clientId) {
+        console.log("[SW] Missing registry entry for client:", clientId)
+
+        const url = e.source?.url
+
+        console.log("[SW] Source URL:", url)
+
+        if (url) {
+            const parsed = new URL(url)
+
+            console.log("[SW] Parsed pathname:", parsed.pathname)
+
+            const parts = parsed.pathname
+                .split("/")
+                .filter(Boolean)
+
+            console.log("[SW] Path parts:", parts)
+
+            if (parts[0] === "apps" && parts.length >= 3) {
+                const appKey = `${parts[1]}/${parts[2]}`
+
+                console.log("[SW] Auto-registering client", {
+                    clientId,
+                    appKey
+                })
+
+                registerWindow(clientId, appKey)
+
+                console.log(
+                    "[SW] Registry after auto-register:",
+                    windowRegistry
+                )
+
+                entry = getWindowEntry(clientId)
+
+                console.log(
+                    "[SW] Resolved entry after auto-register:",
+                    entry
+                )
+            } else {
+                console.warn(
+                    "[SW] Could not derive appKey from pathname:",
+                    parsed.pathname
+                )
+            }
+        } else {
+            console.warn(
+                "[SW] e.source.url missing for client:",
+                clientId
+            )
+        }
+    }
+    console.log(entry, clientId, e) // beta
     const appKey = entry?.appKey ?? null
 
     if (!appKey) {

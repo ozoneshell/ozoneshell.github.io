@@ -14,7 +14,6 @@
     "start_url": ".",
     "sources": [
         "script.js",
-        "sub/index.html",
         "styles.css"
     ],
     "version": "0.1",

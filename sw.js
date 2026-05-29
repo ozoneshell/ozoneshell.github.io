@@ -1,6 +1,6 @@
 import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
 import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
-import { registerWindow } from "./scripts/sw-registry.js"
+import { registerWindow, getWindowEntry, windowRegistry } from "./scripts/sw-registry.js"
 import { mimeFromPath, sysDialog } from "./scripts/utility.js"
 
 ensureRoot()
@@ -57,25 +57,39 @@ self.__OZONE_CONFIG__ = {
 
 log("config", self.__OZONE_CONFIG__)
 
-self.addEventListener("message", handleRpcMessage)
+self.addEventListener("message", async e => {
+    if (e.data?.type === "register-window") {
+        registerWindow(
+            e.source.id,
+            e.data.appKey
+        )
 
+        e.source?.postMessage({
+            type: "register-window-ok"
+        })
+
+        return
+    }
+
+    handleRpcMessage(e)
+})
 self.addEventListener("activate", e => {
-  log("activate")
-  e.waitUntil(
-    clients.claim().then(startClientPruner)
-  )
+    log("activate")
+    e.waitUntil(
+        clients.claim().then(startClientPruner)
+    )
 })
 
 function startClientPruner() {
-  setInterval(async () => {
-    const live = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
-    const liveIds = new Set(live.map(c => c.id))
-    for (const [, subs] of channels) {
-      for (const id of subs) {
-        if (!liveIds.has(id)) subs.delete(id)
-      }
-    }
-  }, 30_000)
+    setInterval(async () => {
+        const live = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+        const liveIds = new Set(live.map(c => c.id))
+        for (const [, subs] of channels) {
+            for (const id of subs) {
+                if (!liveIds.has(id)) subs.delete(id)
+            }
+        }
+    }, 30_000)
 }
 
 self.addEventListener("fetch", e => {
@@ -96,7 +110,9 @@ self.addEventListener("fetch", e => {
             const last = parts[parts.length - 1]
             if (!last.includes(".")) {
                 log("redirecting trailing slash", pathname + "/")
-                e.respondWith(Response.redirect(pathname + "/", 301))
+                e.respondWith(
+                    Response.redirect(new URL(pathname + "/", request.url), 301)
+                )
                 return
             }
         }
@@ -105,14 +121,37 @@ self.addEventListener("fetch", e => {
 
         e.respondWith(route(request, url, parts))
 
-        if (!isShared && e.clientId && parts.length >= 3) {
-            const appKey = `${parts[1]}/${parts[2]}`
-            const paramsId = url.searchParams.get("paramsId") ?? null
-            rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
-                const permissions = registryItem?.permissions ?? []
-                registerWindow(e.clientId, appKey, paramsId, permissions)
-            })
+        // Register app window for direct navigation to app index.html
+        if (
+            !isShared &&
+            e.clientId &&
+            request.mode === "navigate" &&
+            parts.length >= 3
+        ) {
+            const author = parts[1]
+            const appName = parts[2]
+            const clientId = e.clientId
+
+            // Try exact match first, then capitalized variant
+            rpc.settings.get(`${author}/${appName}`, "appRegistry.json")
+                .then(registryItem => {
+                    if (registryItem) {
+                        const permissions = registryItem?.permissions ?? []
+                        return
+                    }
+                    // Try capitalized variant
+                    const capitalizedName = appName.charAt(0).toUpperCase() + appName.slice(1)
+                    return rpc.settings.get(`${author}/${capitalizedName}`, "appRegistry.json")
+                        .then(item => {
+                            if (item) {
+                                const permissions = item?.permissions ?? []
+                                registerWindow(clientId, `${author}/${capitalizedName}`, null, permissions)
+                            }
+                        })
+                })
+                .catch(() => { })
         }
+
         return
     }
 
@@ -126,7 +165,6 @@ self.addEventListener("fetch", e => {
             const appKey = `${author}/${name}`
             rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
                 const permissions = registryItem?.permissions ?? []
-                registerWindow(e.clientId, appKey, null, permissions)
             })
         }
     }
@@ -163,7 +201,7 @@ async function handleNavigation(request, pathname) {
     }
 
     log("serving launcher")
-    return serveLauncher(launcherPath)
+    return serveLauncher(launcherPath, request)
 }
 
 const encoder = new TextEncoder()
@@ -237,13 +275,15 @@ function createHtmlInjector(head, loaderDiv) {
 const SHARED_PREFIX = "/system/sharedAssets/"
 const APPS_PREFIX = "/system/apps/"
 
-const manifestCache = new LRU(30)
-const vfsBlobCache = new LRU(20)
 const injectedScriptCache = new LRU(30)
 const liveReloadBodyCache = new LRU(20)
 
 const vfsBlobRevalidating = new Map()
 const manifestRevalidating = new Map()
+
+const vfsBlobCache = new LRU(100)
+const manifestCache = new LRU(50)
+const channels = new Map()
 
 async function cachedStreamFile(vfsPath) {
     const cached = vfsBlobCache.get(vfsPath)
@@ -276,7 +316,7 @@ function getLauncherPath() {
     return `/system/apps/${author}/${name}/index.html`
 }
 
-async function serveLauncher(launcherPath) {
+async function serveLauncher(launcherPath, request) {
     log("serveLauncher", { launcherPath })
 
     const parts = launcherPath.replace(/^\/system\/apps\//, "").split("/")
@@ -303,11 +343,15 @@ async function serveLauncher(launcherPath) {
     const iconSvg = typeof manifest?.icon === "string" ? manifest.icon : ""
     const { head, loaderDiv } = buildInjectedScript(iconSvg)
 
+    const appKey = `${parts[0]}/${parts[1]}`
+
     const injectedHead =
         `<base href="/apps/${parts[0]}/${parts[1]}/">` +
-        `<script>window.__APP_BASE__="/apps/${parts[0]}/${parts[1]}/"</script>` +
+        `<script>
+        window.__APP_BASE__="/apps/${parts[0]}/${parts[1]}/"
+        window.__APP_KEY__="${appKey}"
+    <\/script>` +
         head
-
     const stream = streamed.file
         .stream()
         .pipeThrough(createHtmlInjector(injectedHead, loaderDiv))
@@ -351,223 +395,685 @@ function scheduleRevalidateManifest(manifestPath) {
     manifestRevalidating.set(manifestPath, p)
 }
 
-function buildInjectedScript(iconSvg = "") {
-    const cached = injectedScriptCache.get(iconSvg)
-    if (cached !== undefined) return cached
+const INJECTED_CSS = `
+html.app-ready #_app_loader {
+    opacity: 0;
+    pointer-events: none;
+}
 
-    const loaderDiv = iconSvg
-        ? `<div id="_app_loader"><div id="_app_loader_icon">${iconSvg}</div></div>`
-        : ""
+html {
+    overflow: hidden;
+}
 
-    const result = {
-        head: `<style>
-html.app-ready #_app_loader { opacity: 0; pointer-events: none; }
-html {overflow: hidden;}
-html.app-ready {overflow: auto;}
+html.app-ready {
+    overflow: auto;
+}
+
 #_app_loader {
-    position: fixed; inset: 0; z-index: 2147483647;
-    display: flex; align-items: center; justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: opacity 0.45s ease;
     background: inherit;
     pointer-events: none;
 }
-#_app_loader_icon { width: 72px; height: 72px; }
-#_app_loader_icon svg { width: 100%; height: 100%; }
-</style>
-<script>
-(() => {
-    if (window.opener) { try { window.opener = null } catch {} }
-    window.addEventListener("load", () => document.documentElement.classList.add("app-ready"))
-window.addEventListener("pagehide", async () => {
-    if (__popupResponded) return
 
+#_app_loader_icon {
+    width: 72px;
+    height: 72px;
+}
+
+#_app_loader_icon svg {
+    width: 100%;
+    height: 100%;
+}
+`
+
+function createBootTrigger() {
+    return `
+const __paramsId = new URLSearchParams(location.search).get("paramsId") ?? ""
+
+let __popupResponded = false
+
+if (window.opener) {
     try {
-        const params = await SWBridge.call("apps.getParams", __paramsId)
+        window.opener = null
+    } catch {}
+}
 
-        if (params?.__responseId) {
-            await SWBridge.call(
-                "apps.notifyPopupClosed",
-                params.__responseId
+window.addEventListener(
+    "load",
+    () => document.documentElement.classList.add("app-ready")
+)
+`
+}
+
+function createSWBridger() {
+    return `
+class SWBridge {
+    static #id = 0
+    static #wait = new Map()
+    static #ready = null
+
+    static async init() {
+    if (this.#ready) {
+        return this.#ready
+    }
+
+    this.#ready = (async () => {
+        await navigator.serviceWorker.ready
+
+        if (!navigator.serviceWorker.controller) {
+            await new Promise(resolve => {
+                navigator.serviceWorker.addEventListener(
+                    "controllerchange",
+                    resolve,
+                    { once: true }
+                )
+            })
+        }
+
+        const controller =
+            navigator.serviceWorker.controller
+
+        if (!controller) {
+            throw new Error(
+                "Missing service worker controller"
             )
         }
-    } catch {}
-})
-    const _open = window.open
-    window.open = (url, target, features) =>
-        _open.call(window, url, target || '_blank',
-            features ? features + ',noopener,noreferrer' : 'noopener,noreferrer')
 
-    const __paramsId = new URLSearchParams(location.search).get("paramsId") ?? ""
-    let __popupResponded = false
+        const derivedAppKey =
+            window.__APP_KEY__ ||
+            (
+                location.pathname
+                    .split("/")
+                    .filter(Boolean)
+                    .slice(0, 3)
+                    .join("/")
+            )
 
-    class SWBridge {
-        static #id = 0
-        static #wait = new Map()
-        static async call(method, ...args) {
-            return new Promise(async res => {
-                const id = ++this.#id
-                this.#wait.set(id, res)
-                let controller = navigator.serviceWorker.controller
-                if (!controller) {
-                    await navigator.serviceWorker.ready
-                    controller = navigator.serviceWorker.controller
+        if (derivedAppKey) {
+            await new Promise(resolve => {
+                const onMessage = ({ data }) => {
+                    if (
+                        data?.type ===
+                        "register-window-ok"
+                    ) {
+                        navigator.serviceWorker.removeEventListener(
+                            "message",
+                            onMessage
+                        )
+
+                        resolve()
+                    }
                 }
-                controller?.postMessage({ type: "rpc", id, method, args })
+
+                navigator.serviceWorker.addEventListener(
+                    "message",
+                    onMessage
+                )
+
+                controller.postMessage({
+                    type: "register-window",
+                    appKey: derivedAppKey
+                })
             })
         }
-        static init() {
-            navigator.serviceWorker.addEventListener("message", ({ data: d, source }) => {
-                if (d?.type === "rpc-res") {
-                    SWBridge.#wait.get(d.id)?.(d.result)
-                    SWBridge.#wait.delete(d.id)
-                } else if (d?.type === "from-sw" && d.action === "apps.open") {
-                    try { new URL(d.url, location.origin); window.open(d.url, "_blank", "noopener,noreferrer") }
-                    catch { console.error("Invalid URL from SW:", d.url) }
-                } else if (d?.type === "sys-dialog") {
-                    handleSystemDialog(d, source)
-                }
-            })
-        }
-    }
-    SWBridge.init()
 
-    const proxyCache = new Map()
-    function createProxy(path) {
-        let p = proxyCache.get(path)
-        if (p) return p
-        p = new Proxy(() => {}, {
-            get(_, prop) { return createProxy(path + '.' + prop) },
-            apply(_, __, args) { return SWBridge.call(path, ...args) }
+        navigator.serviceWorker.addEventListener(
+            "message",
+            ({ data, source }) => {
+                if (data?.type === "rpc-res") {
+                    SWBridge.#wait.get(data.id)?.(
+                        data.result
+                    )
+
+                    SWBridge.#wait.delete(data.id)
+
+                    return
+                }
+
+                if (
+                    data?.type === "from-sw" &&
+                    data.action === "apps.open"
+                ) {
+                    try {
+                        new URL(
+                            data.url,
+                            location.origin
+                        )
+
+                        window.open(
+                            data.url,
+                            "_blank",
+                            "noopener,noreferrer"
+                        )
+                    } catch {
+                        console.error(
+                            "Invalid URL from SW:",
+                            data.url
+                        )
+                    }
+
+                    return
+                }
+
+                if (data?.type === "sys-dialog") {
+                    handleSystemDialog(
+                        data,
+                        source
+                    )
+                }
+            }
+        )
+    })()
+
+    return this.#ready
+}
+
+    static async call(method, ...args) {
+        await this.init()
+
+        return new Promise(async resolve => {
+            const id = ++this.#id
+
+            this.#wait.set(id, resolve)
+
+            let controller =
+                navigator.serviceWorker.controller
+
+            if (!controller) {
+                await navigator.serviceWorker.ready
+                controller =
+                    navigator.serviceWorker.controller
+            }
+
+            controller?.postMessage({
+                type: "rpc",
+                id,
+                method,
+                args
+            })
         })
-        proxyCache.set(path, p)
-        return p
+    }
+}
+
+SWBridge.init()
+
+const rpc = SWBridge.call.bind(SWBridge)
+`
+}
+
+function createWindowOpenPatcher() {
+    return `
+const __nativeOpen = window.open
+
+window.open = async (url, target, features) => {
+    const finalURL = new URL(url, location.href).href
+
+    if (window.__embedChannel) {
+        try {
+            await rpc(
+                "events.broadcast",
+                __embedChannel,
+                {
+                    type: "window.open",
+                    url: finalURL,
+                    target: target || "_blank",
+                    features: features || ""
+                }
+            )
+
+            return null
+        } catch (err) {
+            console.error(
+                "Embedded window.open dispatch failed",
+                err
+            )
+
+            return null
+        }
     }
 
-    window.api = new Proxy({}, {
-        get(_, prop) {
-            if (prop === "apps") return {
-                open: async (path, params, mode) => {
-                    const result = await SWBridge.call("apps.open", path, params, mode)
-                    if (typeof result === "string") {
-                        window.open(result, "_blank", "noopener,noreferrer")
-                        return null
-                    }
-                    const sw = window.screen
-                    const maxW = sw.availWidth  * 0.8
-                    const maxH = sw.availHeight * 0.8
-                    let w = maxW, h = w * (6 / 9)
-                    if (h > maxH) { h = maxH; w = h * (9 / 6) }
-                    h = Math.min(h, maxH); w = Math.min(w, maxW)
-                    const left = Math.max(0, (sw.availWidth  - w) / 2)
-                    const top  = Math.max(0, (sw.availHeight - h) / 2)
-                  const popup = _open.call(window, result.url, "_blank",
-    \`popup=yes,width=\${Math.floor(w)},height=\${Math.floor(h)},left=\${Math.floor(left)},top=\${Math.floor(top)}\`)
+    return __nativeOpen.call(
+        window,
+        finalURL,
+        target || "_blank",
+        features
+            ? features + ",noopener,noreferrer"
+            : "noopener,noreferrer"
+    )
+}
+`
+}
 
-                if (!popup) {
-                    await SWBridge.call("apps.notifyPopupClosed", result.responseId)
-                    return null
-                }
+function createPopupManagerSystem() {
+    return `
+class PopupManager {
+    static async open(path, params, mode) {
+        const result = await rpc(
+            "apps.open",
+            path,
+            params,
+            mode
+        )
 
-                const pollClose = setInterval(async () => {
-                    if (popup.closed) {
-                        clearInterval(pollClose)
-                        await SWBridge.call("apps.notifyPopupClosed", result.responseId)
-                    }
-                }, 500)
+        if (typeof result === "string") {
+            window.open(
+                result,
+                "_blank",
+                "noopener,noreferrer"
+            )
 
-                const value = await SWBridge.call("apps.waitForResponse", result.responseId)
-                    clearInterval(pollClose)
-                    return value
-                },
-              respond: async (value) => {
-    const params = await SWBridge.call("apps.getParams", __paramsId)
+            return null
+        }
 
-    if (params?.__responseId) {
+        const sw = window.screen
+
+        const maxW = sw.availWidth * 0.8
+        const maxH = sw.availHeight * 0.8
+
+        let w = maxW
+        let h = w * (6 / 9)
+
+        if (h > maxH) {
+            h = maxH
+            w = h * (9 / 6)
+        }
+
+        h = Math.min(h, maxH)
+        w = Math.min(w, maxW)
+
+        const left = Math.max(
+            0,
+            (sw.availWidth - w) / 2
+        )
+
+        const top = Math.max(
+            0,
+            (sw.availHeight - h) / 2
+        )
+
+        const popup = __nativeOpen.call(
+            window,
+            result.url,
+            "_blank",
+            \`popup=yes,width=\${Math.floor(w)},height=\${Math.floor(h)},left=\${Math.floor(left)},top=\${Math.floor(top)}\`
+        )
+
+        if (!popup) {
+            await rpc(
+                "apps.notifyPopupClosed",
+                result.responseId
+            )
+
+            return null
+        }
+
+        const pollClose = setInterval(async () => {
+            if (popup.closed) {
+                clearInterval(pollClose)
+
+                await rpc(
+                    "apps.notifyPopupClosed",
+                    result.responseId
+                )
+            }
+        }, 500)
+
+        const value = await rpc(
+            "apps.waitForResponse",
+            result.responseId
+        )
+
+        clearInterval(pollClose)
+
+        return value
+    }
+
+    static async respond(value) {
+        const params = await rpc(
+            "apps.getParams",
+            __paramsId
+        )
+
+        if (!params?.__responseId) {
+            return
+        }
+
         __popupResponded = true
 
-        await SWBridge.call(
+        await rpc(
             "apps.respond",
             params.__responseId,
             value
         )
 
-        await new Promise(r => setTimeout(r, 50))
+        await new Promise(resolve => setTimeout(resolve, 50))
 
         window.close()
     }
 }
-            }
-            if (prop === "params") {
-                if (!window.__appParamsCache)
-                    window.__appParamsCache = SWBridge.call("apps.getParams", __paramsId)
-                return window.__appParamsCache
-            }
-            if (prop === "events") return {
-                async register(channelKey) {
-                    return SWBridge.call("events.register", channelKey ?? null)
-                },
+`
+}
 
-                async listen(channelKey, callback) {
-                    await SWBridge.call("events.subscribe", channelKey)
+function createEventsAPI() {
+    return `
+function createEventsAPI() {
+    return {
+        async register(channelKey) {
+            return rpc(
+                "events.register",
+                channelKey ?? null
+            )
+        },
 
-                    if (!window.__channelListeners) {
-                    window.__channelListeners = new Map() 
-                    navigator.serviceWorker.addEventListener("message", ({ data: d }) => {
-                        if (d?.type !== "channel-event") return
-                        const fns = window.__channelListeners.get(d.channelKey)
-                        if (fns) fns.forEach(fn => fn(d.data, d.from))
-                    })
+        async listen(channelKey, callback) {
+            await rpc(
+                "events.subscribe",
+                channelKey
+            )
+
+            if (!window.__channelListeners) {
+                window.__channelListeners = new Map()
+
+                navigator.serviceWorker.addEventListener(
+                    "message",
+                    ({ data }) => {
+                        if (data?.type !== "channel-event") {
+                            return
+                        }
+
+                        const fns =
+                            window.__channelListeners.get(
+                                data.channelKey
+                            )
+
+                        if (fns) {
+                            fns.forEach(fn =>
+                                fn(data.data, data.from)
+                            )
+                        }
                     }
-
-                    if (!window.__channelListeners.has(channelKey))
-                    window.__channelListeners.set(channelKey, new Set())
-
-                    window.__channelListeners.get(channelKey).add(callback)
-
-                    return () => {
-                    window.__channelListeners.get(channelKey)?.delete(callback)
-                    SWBridge.call("events.unsubscribe", channelKey)
-                    }
-                },
-
-                async broadcast(channelKey, data) {
-                    return SWBridge.call("events.broadcast", channelKey, data)
-                },
+                )
             }
-            return createProxy(prop)
-        }
-    })
 
-    function handleSystemDialog({ dialogType, message, defaultValue, id }, source) {
-        const reply = (payload) => {
-            const channel = source || navigator.serviceWorker.controller
-            channel?.postMessage(payload)
-        }
+            if (
+                !window.__channelListeners.has(channelKey)
+            ) {
+                window.__channelListeners.set(
+                    channelKey,
+                    new Set()
+                )
+            }
 
-        switch (dialogType) {
-            case "alert":
-                alert(message)
-                break
-            case "confirm":
-                reply({ type: "dialog-response", id, value: confirm(message) })
-                break
-            case "prompt":
-                reply({ type: "dialog-response", id, value: prompt(message, defaultValue ?? "") })
-                break
+            window.__channelListeners
+                .get(channelKey)
+                .add(callback)
+
+            return () => {
+                const set =
+                    window.__channelListeners.get(
+                        channelKey
+                    )
+
+                if (!set) {
+                    return
+                }
+
+                set.delete(callback)
+
+                if (set.size === 0) {
+                    window.__channelListeners.delete(
+                        channelKey
+                    )
+
+                    rpc(
+                        "events.unsubscribe",
+                        channelKey
+                    )
+                }
+            }
+        },
+
+        async broadcast(channelKey, data) {
+            return rpc(
+                "events.broadcast",
+                channelKey,
+                data
+            )
         }
     }
-})()
-</script>`,
+}
+`
+}
+
+function createProxySystem() {
+    return `
+const proxyCache = new Map()
+
+function createProxy(path) {
+    let proxy = proxyCache.get(path)
+
+    if (proxy) {
+        return proxy
+    }
+
+    proxy = new Proxy(
+        () => {},
+        {
+            get(_, prop) {
+                return createProxy(
+                    path + "." + prop
+                )
+            },
+
+            apply(_, __, args) {
+                return rpc(path, ...args)
+            }
+        }
+    )
+
+    proxyCache.set(path, proxy)
+
+    return proxy
+}
+`
+}
+
+function createClientAPIProxy() {
+    return `
+const appsAPI = {
+    open: PopupManager.open,
+    respond: PopupManager.respond
+}
+
+const eventsAPI = createEventsAPI()
+
+window.api = new Proxy(
+    {
+        apps: appsAPI,
+        events: eventsAPI
+    },
+    {
+        get(target, prop) {
+            if (prop === "params") {
+                if (!window.__appParamsCache) {
+                    window.__appParamsCache = rpc(
+                        "apps.getParams",
+                        __paramsId
+                    )
+                }
+
+                return window.__appParamsCache
+            }
+
+            if (prop in target) {
+                return target[prop]
+            }
+
+            return createProxy(prop)
+        }
+    }
+)
+`
+}
+
+function createLifecycleCode() {
+    return `
+window.addEventListener(
+    "pagehide",
+    async () => {
+        if (__popupResponded) {
+            return
+        }
+
+        try {
+            const params = await rpc(
+                "apps.getParams",
+                __paramsId
+            )
+
+            if (params?.__responseId) {
+                await rpc(
+                    "apps.notifyPopupClosed",
+                    params.__responseId
+                )
+            }
+        } catch {}
+    }
+)
+`
+}
+
+function createDialogHandlerCode() {
+    return `
+function handleSystemDialog(
+    {
+        dialogType,
+        message,
+        defaultValue,
+        id
+    },
+    source
+) {
+    const reply = payload => {
+        const channel =
+            source ||
+            navigator.serviceWorker.controller
+
+        channel?.postMessage(payload)
+    }
+
+    switch (dialogType) {
+        case "alert":
+            alert(message)
+            break
+
+        case "confirm":
+            reply({
+                type: "dialog-response",
+                id,
+                value: confirm(message)
+            })
+            break
+
+        case "prompt":
+            reply({
+                type: "dialog-response",
+                id,
+                value: prompt(
+                    message,
+                    defaultValue ?? ""
+                )
+            })
+            break
+    }
+}
+`
+}
+
+function buildRuntimeScript() {
+    return [
+        createBootTrigger(),
+        createSWBridger(),
+        createWindowOpenPatcher(),
+        createPopupManagerSystem(),
+        createEventsAPI(),
+        createProxySystem(),
+        createClientAPIProxy(),
+        createLifecycleCode(),
+        createDialogHandlerCode()
+    ].join("\n")
+}
+
+function buildInjectedScript(iconSvg = "") {
+    const cached = injectedScriptCache.get(iconSvg)
+
+    if (cached !== undefined) {
+        return cached
+    }
+
+    const loaderDiv = iconSvg
+        ? `
+      <div id="_app_loader">
+          <div id="_app_loader_icon">
+              ${iconSvg}
+          </div>
+      </div>
+      `
+        : ""
+
+    const result = {
+        head: `
+      <style>
+      ${INJECTED_CSS}
+      </style>
+
+      <script>
+      ${buildRuntimeScript()}
+      <\/script>
+    `,
         loaderDiv
     }
 
     injectedScriptCache.set(iconSvg, result)
+
     return result
 }
 
 const HTML_CT = "text/html"
 const COOP_HEADER = "Cross-Origin-Opener-Policy"
 const COOP_VALUE = "same-origin"
+
+const appNameCache = new Map()
+
+async function getAppKey(author, appName) {
+    const cacheKey = `${author}/${appName}`
+
+    if (appNameCache.has(cacheKey)) {
+        return appNameCache.get(cacheKey)
+    }
+
+    let registryItem = await rpc.settings.get(cacheKey, "appRegistry.json").catch(() => null)
+    if (registryItem) {
+        appNameCache.set(cacheKey, cacheKey)
+        return cacheKey
+    }
+
+    const capitalizedName = appName.charAt(0).toUpperCase() + appName.slice(1)
+    const capitalizedKey = `${author}/${capitalizedName}`
+    registryItem = await rpc.settings.get(capitalizedKey, "appRegistry.json").catch(() => null)
+    if (registryItem) {
+        appNameCache.set(cacheKey, capitalizedKey)
+        return capitalizedKey
+    }
+
+    return cacheKey
+}
 
 async function route(request, url, parts) {
     log("route:start", { url: request.url, parts })
@@ -580,10 +1086,13 @@ async function route(request, url, parts) {
         return new Response("Forbidden", { status: 403 })
     }
 
-    const appKey = isShared ? "" : `${parts[1]}/${parts[2]}`
+    // Get the correct case of the app name from registry
+    let appKey = isShared ? "" : await getAppKey(parts[1], parts[2])
+    const [author, name] = appKey.split("/")
+
     const vfsPath = isShared
         ? SHARED_PREFIX + (parts.length > 1 ? parts.slice(1).join("/") : "index.html")
-        : `${APPS_PREFIX}${parts[1]}/${parts[2]}/${parts.length > 3 ? parts.slice(3).join("/") : "index.html"}`
+        : `${APPS_PREFIX}${author}/${name}/${parts.length > 3 ? parts.slice(3).join("/") : "index.html"}`
 
     log("route:vfsPath", vfsPath)
 
@@ -622,6 +1131,12 @@ async function route(request, url, parts) {
 
     if (!streamed || streamed.type !== "file") {
         log("not found", vfsPath)
+        // Fallback to defaultSource for sharedAssets in development
+        if (isShared) {
+            const devUrl = request.url.replace(/\/sharedAssets\//, "/defaultSource/sharedAssets/")
+            log("sharedAsset not in VFS, trying dev path", devUrl)
+            return fetch(devUrl)
+        }
         return new Response("Not found", { status: 404 })
     }
 
@@ -635,7 +1150,7 @@ async function route(request, url, parts) {
     }
 
     const manifestPath = !isShared
-        ? `${APPS_PREFIX}${parts[1]}/${parts[2]}/manifest.json`
+        ? `${APPS_PREFIX}${author}/${name}/manifest.json`
         : null
     const manifest = await getManifest(manifestPath)
     const iconSvg = typeof manifest?.icon === "string" ? manifest.icon : ""

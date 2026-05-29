@@ -1,0 +1,18 @@
+{
+    "name": "OzoneSystemUI",
+    "author": "ozone",
+    "description": "system configuration application",
+    "icon": "<svg width='334' height='334' viewBox='0 0 334 334' fill='none' xmlns='http://www.w3.org/2000/svg'> <g clip-path='url(#clip0_4_22)'> <path d='M-1 -1H334V128.791L229.641 38.4634L153.346 71.788L334 174.393V334H-1V137.56L153.346 282.259L229.641 205.086L-1 108.62V-1Z' fill='white'/> </g> <defs> <clipPath id='clip0_4_22'> <rect width='334' height='334' fill='white'/> </clipPath> </defs> </svg>",
+    "permissions": [
+        "fileUtil",
+        "fileGet",
+        "fileset"
+    ],
+    "landing": "index.html",
+    "sources": [
+        "script.js",
+        "styles.css"
+    ],
+    "version": "0.1",
+    "handle": "OzoneSystemUI"
+}

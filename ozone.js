@@ -5,13 +5,8 @@ import { rpc } from "/scripts/sw-api.js"
 export class Ozone {
   constructor(config = {}) {
     this.config = {
-      defaultApps: ["files", "settings", "text", "media", "menu"],
-      sharedAssets: [
-        "google_sans.ttf",
-        "icons.woff2",
-        "ozone_gui.css",
-        "ozone_std_util.js"
-      ],
+      defaultApps: [],
+      sharedAssets: [],
       swKey: "osware_sw_version",
       dbName: "vfs",
       sourceURL: new URL("./defaultSource", import.meta.url).pathname,

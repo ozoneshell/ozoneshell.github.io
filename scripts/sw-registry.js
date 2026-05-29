@@ -7,6 +7,9 @@ export const pendingResponses = new Map()
 export const liveReloadBases = new Map()
 
 export function registerWindow(clientId, appKey, paramsId = null, permissions = []) {
+    if (windowRegistry.has(clientId)) {
+        return
+    }
     windowRegistry.set(clientId, { appKey, paramsId, permissions, registeredAt: Date.now() })
 }
 
