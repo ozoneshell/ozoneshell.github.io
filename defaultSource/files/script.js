@@ -356,7 +356,6 @@ const actionMap = {
             }) ?? oldName
 
         if (!newName || newName === oldName) {
-            console.log("eh", newName, oldName)
             return
         }
 

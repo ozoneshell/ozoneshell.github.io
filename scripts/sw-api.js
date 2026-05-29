@@ -1,7 +1,7 @@
 
 import { ensureRoot, readFile, writeFile, list, exists, mkdir, mkdirp, remove, move, copy, streamFile, parentOf, norm } from "/scripts/vfs.js"
 import { mimeFromPath, openFile, settings, appStorage } from "/scripts/utility.js"
-import { appParams, pendingResponses, liveReloadBases, getWindowEntry, windowRegistry, isNamespaceAllowed } from "./sw-registry.js"
+import { appParams, pendingResponses, liveReloadBases, getWindowEntry, windowRegistry, isNamespaceAllowed, registerWindow } from "./sw-registry.js"
 import { sysDialog, pendingDialogs } from "./utility.js"
 
 export { appParams, pendingResponses, liveReloadBases }
@@ -293,66 +293,29 @@ export async function handleRpcMessage(e) {
     if (d?.type !== "rpc") return
 
     const clientId = e.source?.id ?? null
-    let entry = clientId
-        ? getWindowEntry(clientId)
-        : null
+    let entry = clientId ? getWindowEntry(clientId) : null
 
     if (!entry && clientId) {
-        console.log("[SW] Missing registry entry for client:", clientId)
-
         const url = e.source?.url
-
-        console.log("[SW] Source URL:", url)
 
         if (url) {
             const parsed = new URL(url)
 
-            console.log("[SW] Parsed pathname:", parsed.pathname)
-
-            const parts = parsed.pathname
-                .split("/")
-                .filter(Boolean)
-
-            console.log("[SW] Path parts:", parts)
+            const parts = parsed.pathname.split("/").filter(Boolean)
 
             if (parts[0] === "apps" && parts.length >= 3) {
                 const appKey = `${parts[1]}/${parts[2]}`
 
-                console.log("[SW] Auto-registering client", {
-                    clientId,
-                    appKey
-                })
-
                 registerWindow(clientId, appKey)
 
-                console.log(
-                    "[SW] Registry after auto-register:",
-                    windowRegistry
-                )
-
                 entry = getWindowEntry(clientId)
-
-                console.log(
-                    "[SW] Resolved entry after auto-register:",
-                    entry
-                )
-            } else {
-                console.warn(
-                    "[SW] Could not derive appKey from pathname:",
-                    parsed.pathname
-                )
             }
-        } else {
-            console.warn(
-                "[SW] e.source.url missing for client:",
-                clientId
-            )
         }
     }
+
     const appKey = entry?.appKey ?? null
 
     if (!appKey) {
-        console.warn("[SW] RPC rejected: missing appKey")
         e.source?.postMessage({
             type: "rpc-res",
             id: d.id,
@@ -363,9 +326,13 @@ export async function handleRpcMessage(e) {
     }
 
     const namespace = d.method.split(".")[0]
-    if (!await isNamespaceAllowed(appKey, namespace, clientId)) {
-        console.warn(`[SW] RPC blocked: ${appKey ?? "unregistered"} → ${d.method}`)
-        e.source.postMessage({ type: "rpc-res", id: d.id, result: null, blocked: true })
+    if (!(await isNamespaceAllowed(appKey, namespace, clientId))) {
+        e.source.postMessage({
+            type: "rpc-res",
+            id: d.id,
+            result: null,
+            blocked: true
+        })
         return
     }
 
@@ -379,10 +346,8 @@ export async function handleRpcMessage(e) {
                 clientId,
                 method: d.method
             })
-        } else console.warn(d.method, "is not a valid endpoint")
-    } catch (err) {
-        console.warn(err)
-    }
+        }
+    } catch (err) {}
 
     e.source.postMessage({ type: "rpc-res", id: d.id, result })
 }

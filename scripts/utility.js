@@ -146,7 +146,6 @@ var appStorage = {
     },
 
     get: async function (key, tag) {
-        console.log(tag)
         const path = resolveAppStoragePath(tag)
         const data = await readJSON(path)
 

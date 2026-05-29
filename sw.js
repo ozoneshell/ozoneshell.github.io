@@ -1,6 +1,6 @@
 import { ensureRoot, readFile, streamFile } from "./scripts/vfs.js"
 import { handleRpcMessage, liveReloadBases, appParams, rpc } from "./scripts/sw-api.js"
-import { registerWindow, getWindowEntry, windowRegistry } from "./scripts/sw-registry.js"
+import { registerWindow } from "./scripts/sw-registry.js"
 import { mimeFromPath, sysDialog } from "./scripts/utility.js"
 import { buildRuntimeScript } from "./scripts/runtime-script.js"
 
@@ -585,7 +585,7 @@ async function handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsP
 
     const networkPromise = fetch(resolvedLiveUrl)
         .then(async res => {
-            console.log("LR fetch", resolvedLiveUrl, res.status)
+            log("LR fetch", resolvedLiveUrl, res.status)
 
             if (!res.ok) return null
 
