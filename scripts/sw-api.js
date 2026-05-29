@@ -349,7 +349,6 @@ export async function handleRpcMessage(e) {
             )
         }
     }
-    console.log(entry, clientId, e) // beta
     const appKey = entry?.appKey ?? null
 
     if (!appKey) {
