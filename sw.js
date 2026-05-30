@@ -335,8 +335,11 @@ async function serveLauncher(launcherPath, request) {
     const { head, loaderDiv } = buildInjectedScript(iconSvg)
 
     const appKey = `${parts[0]}/${parts[1]}`
-
+    const favicon = iconSvg
+        ? `<link rel="icon" type="image/svg+xml" href="${svgToFaviconDataUrl(iconSvg)}">`
+        : ""
     const injectedHead =
+        favicon +
         `<base href="/apps/${parts[0]}/${parts[1]}/">` +
         `<script>
         window.__APP_BASE__="/apps/${parts[0]}/${parts[1]}/"
@@ -423,6 +426,10 @@ html.app-ready {
 }
 `
 
+function svgToFaviconDataUrl(svg) {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 function buildInjectedScript(iconSvg = "") {
     const cached = injectedScriptCache.get(iconSvg)
 
@@ -440,15 +447,20 @@ function buildInjectedScript(iconSvg = "") {
       `
         : ""
 
+    const faviconLink = iconSvg
+        ? `<link rel="icon" type="image/svg+xml" href="${svgToFaviconDataUrl(iconSvg)}">`
+        : ""
+
     const result = {
         head: `
-      <style>
-      ${INJECTED_CSS}
-      </style>
+        ${faviconLink}
+        <style>
+        ${INJECTED_CSS}
+        </style>
 
-      <script>
-      ${buildRuntimeScript()}
-      <\/script>
+        <script>
+        ${buildRuntimeScript()}
+        <\/script>
     `,
         loaderDiv
     }

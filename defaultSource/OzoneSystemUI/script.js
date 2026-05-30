@@ -62,10 +62,16 @@ const Screens = {
     requiredParams: [],
 
     mount(params) {
-      console.log("config init", params);
+      createConfigButtons(params);
+      openConfigPage("inst", params);
     },
 
-    visible: ["configHeader", "configBtnHeader", "mainDataBox", "btnContainer"],
+    visible: [
+      "configHeader",
+      "configBtnHeader",
+      "mainDataBox",
+      "btnContainer"
+    ],
 
     buttons: [
       {
@@ -167,3 +173,77 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   showScreen(screenType, params);
 });
+
+const ConfigPages = {
+  inst: {
+    title: "Instance",
+    render() {
+      return `instance setting`;
+    }
+  },
+
+  hdlr: {
+    title: "Handlers",
+    render() {
+      return `handlers setting`;
+    }
+  },
+
+  abut: {
+    title: "About",
+    render() {
+      return `<h2>Ozone Shell</h2>
+      <p>Client side shared webapp runtime framework,<br>
+      HTML, Vanilla JS, CSS.<br><br>
+      Built and maintained by <a href="https://github.com/adthoughtsglobal">darkdot</a>.<br>
+      <a href="https://github.com/ozoneshell/ozoneshell.github.io">Source Code</a> &bull; Open Source (MPL-2.0) <br><br>
+      Thanks to the community for their support!<br>
+      Thank you for using this Ozone Shell Instance<br>
+      </p>
+
+      `;
+    }
+  }
+};
+function openConfigPage(page, params) {
+  const configPage = ConfigPages[page];
+
+  document
+    .querySelectorAll(".configBtn")
+    .forEach(btn => btn.classList.remove("active"));
+
+  const activeBtn = UI.configBtnHeader.querySelector(
+    `[data-page="${page}"]`
+  );
+
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+  }
+
+  if (!configPage) {
+    UI.mainDataBox.innerHTML = `
+      <div class="configPage">
+        <h2>Not Found</h2>
+      </div>
+    `;
+    return;
+  }
+
+  UI.mainDataBox.innerHTML = configPage.render(params);
+}
+
+function createConfigButtons(params) {
+  UI.configBtnHeader.innerHTML = "";
+
+  for (const [id, page] of Object.entries(ConfigPages)) {
+    const btn = document.createElement("button");
+
+    btn.className = "configBtn";
+    btn.dataset.page = id;
+    btn.textContent = page.title;
+
+    btn.onclick = () => openConfigPage(id, params);
+
+    UI.configBtnHeader.appendChild(btn);
+  }
+}

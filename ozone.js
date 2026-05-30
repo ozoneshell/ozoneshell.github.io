@@ -37,6 +37,8 @@ export class Ozone {
         await rpc.fileSet.write(`/system/sharedAssets/${file}`, blob)
       })
     )
+
+    settings.set("all", this.config, "instanceConfig.json")
     return true
   }
   async ensureServiceWorker() {
@@ -93,14 +95,28 @@ export class Ozone {
       return false;
     }
   }
-
   async reset() {
     try {
-      const root = await opfsRoot()
-      await root.removeEntry("vfs", { recursive: true })
-
       const regs = await navigator.serviceWorker.getRegistrations()
       await Promise.all(regs.map(r => r.unregister()))
+
+      const root = await opfsRoot()
+
+      try {
+        const vfs = await root.getDirectoryHandle("vfs")
+
+        for await (const [name, handle] of vfs.entries()) {
+          await vfs.removeEntry(name, {
+            recursive: handle.kind === "directory"
+          })
+        }
+
+        await root.removeEntry("vfs")
+      } catch (err) {
+        if (err?.name !== "NotFoundError") {
+          throw err
+        }
+      }
 
       await new Promise(resolve => {
         const req = indexedDB.deleteDatabase(this.config.dbName)
@@ -111,10 +127,10 @@ export class Ozone {
 
       localStorage.removeItem(this.config.swKey)
 
-      return true;
-
-    } catch {
-      return false;
+      return true
+    } catch (err) {
+      console.error(err)
+      return false
     }
   }
 

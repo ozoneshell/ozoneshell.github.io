@@ -268,14 +268,14 @@ export const rpc = {
                 if (metadata.handle) {
                     const existing = await settings.get(
                         metadata.handle,
-                        "Handlers.json"
+                        "handlers.json"
                     )
 
                     if (!existing) {
                         await settings.set(
                             metadata.handle,
                             `${author}/${name}`,
-                            "Handlers.json"
+                            "handlers.json"
                         )
                     }
                 }

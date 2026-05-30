@@ -134,11 +134,15 @@ function resolveAppStoragePath(tag) {
 
     return `/system/apps/${cleanTag}/appStorage.json`
 }
-
 var appStorage = {
     set: async function (key, value, tag) {
         const path = resolveAppStoragePath(tag)
         const data = await readJSON(path)
+
+        if (key === "all") {
+            await writeJSON(path, value)
+            return
+        }
 
         data[key] = value
 
