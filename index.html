@@ -83,7 +83,14 @@
             launcher: {
                 author: "ozone",
                 name: "Menu"
-            }
+            },
+            sharedAssets: [
+                "google_sans.ttf",
+                "icons.woff2",
+                "ozone_gui.css",
+                "ozone_std_util.js"
+            ],
+            versionURL: "/versions.json",
         })
 
         const run = (label, fn, done = "Done", fail = "Failed") => async () => {

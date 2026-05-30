@@ -326,14 +326,7 @@ async function serveLauncher(launcherPath, request) {
 
     if (!streamed || streamed.type !== "file") {
         log("launcher file missing, falling back to network")
-        return fetch(new Request(location.pathname + location.search, {
-            method: "GET",
-            headers: request.headers,
-            mode: request.mode,
-            credentials: request.credentials,
-            cache: request.cache,
-            redirect: request.redirect
-        }))
+        return fetch(location.pathname + location.search)
     }
 
     log("launcher manifest", manifest)
@@ -498,6 +491,35 @@ async function getAppKey(author, appName) {
 async function route(request, url, parts) {
     log("route:start", { url: request.url, parts })
 
+    const isAppSharedAsset =
+        parts[0] === "apps" &&
+        parts.length >= 5 &&
+        parts[3] === "sharedAssets"
+
+    if (isAppSharedAsset) {
+        const vfsPath =
+            SHARED_PREFIX + parts.slice(4).join("/")
+
+        const streamed = await cachedStreamFile(vfsPath)
+
+        console.log("shared asset", {
+            parts,
+            vfsPath,
+            streamed
+        })
+
+        if (!streamed || streamed.type !== "file") {
+            return new Response("Not found", { status: 404 })
+        }
+
+        return new Response(streamed.file.stream(), {
+            headers: {
+                "Content-Type": mimeFromPath(vfsPath),
+                [COOP_HEADER]: COOP_VALUE
+            }
+        })
+    }
+
     const isShared = parts[0] === "sharedAssets"
 
     if (isShared) {
@@ -546,6 +568,7 @@ async function route(request, url, parts) {
     if (resolvedLiveUrl) {
         return handleLiveReload(resolvedLiveUrl, lrParam, isShared, appKey, vfsPath)
     }
+
     const streamed = await cachedStreamFile(vfsPath)
 
     if (!streamed || streamed.type !== "file") {
