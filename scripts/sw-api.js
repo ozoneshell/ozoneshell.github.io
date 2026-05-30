@@ -244,19 +244,40 @@ export const rpc = {
             if (metadata) {
                 await settings.set(
                     `${author}/${name}`,
-                    { icon: metadata.icon, permissions: metadata.permissions },
+                    {
+                        icon: metadata.icon,
+                        permissions: metadata.permissions,
+                        handler: metadata.handler
+                    },
                     "appRegistry.json"
                 )
 
                 if (metadata.capabilities) {
                     const FileBindings = (await settings.get("FileBindings")) ?? {}
                     const key = `${author}/${name}`
+
                     for (const ext of metadata.capabilities) {
                         FileBindings[ext] = [
                             ...new Set([...(FileBindings[ext] ?? []), key])
                         ]
                     }
+
                     await settings.set("FileBindings", FileBindings)
+                }
+
+                if (metadata.handle) {
+                    const existing = await settings.get(
+                        metadata.handle,
+                        "Handlers.json"
+                    )
+
+                    if (!existing) {
+                        await settings.set(
+                            metadata.handle,
+                            `${author}/${name}`,
+                            "Handlers.json"
+                        )
+                    }
                 }
             }
 
@@ -347,7 +368,7 @@ export async function handleRpcMessage(e) {
                 method: d.method
             })
         }
-    } catch (err) {}
+    } catch (err) { }
 
     e.source.postMessage({ type: "rpc-res", id: d.id, result })
 }

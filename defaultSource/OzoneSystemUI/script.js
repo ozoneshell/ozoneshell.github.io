@@ -7,36 +7,104 @@ const UI = {
   btnContainer: document.querySelector(".btns")
 };
 
-const SCREENS = {
+const Screens = {
   installation: {
+    requiredParams: ["packageId"],
+
+    mount(params) {
+      console.log("installation screen init", params);
+    },
+
     visible: ["cardHeader", "mainDataBox", "btnContainer"],
+
     buttons: [
-      { label: "Cancel", action: "cancel" },
-      { label: "Install", action: "install" }
+      {
+        label: "Cancel",
+        onClick(params) {
+          console.log("cancel install", params);
+        }
+      },
+      {
+        label: "Install",
+        onClick(params) {
+          console.log("install package", params.packageId);
+        }
+      }
     ]
   },
 
   escalation: {
+    requiredParams: ["level"],
+
+    mount(params) {
+      console.log("escalation init", params);
+    },
+
     visible: ["cardHeader", "mainDataBox", "btnContainer"],
+
     buttons: [
-      { label: "Cancel", action: "cancel" },
-      { label: "Allow", action: "allow" }
+      {
+        label: "Cancel",
+        onClick(params) {
+          console.log("cancel escalation", params);
+        }
+      },
+      {
+        label: "Allow",
+        onClick(params) {
+          console.log("allow escalation level", params.level);
+        }
+      }
     ]
   },
 
   config: {
+    requiredParams: [],
+
+    mount(params) {
+      console.log("config init", params);
+    },
+
     visible: ["configHeader", "configBtnHeader", "mainDataBox", "btnContainer"],
+
     buttons: [
-      { label: "Cancel", action: "cancel" },
-      { label: "Save changes", action: "save" }
+      {
+        label: "Cancel",
+        onClick(params) {
+          console.log("config cancel", params);
+        }
+      },
+      {
+        label: "Save changes",
+        onClick(params) {
+          console.log("save config", params.configId);
+        }
+      }
     ]
   },
 
   confirmation: {
+    requiredParams: [],
+
+    mount(params) {
+      console.log("confirmation init", params);
+    },
+
     visible: ["miscHeader", "mainDataBox", "btnContainer"],
+
     buttons: [
-      { label: "Cancel", action: "cancel" },
-      { label: "Proceed", action: "proceed" }
+      {
+        label: "Cancel",
+        onClick() {
+          console.log("cancel confirmation");
+        }
+      },
+      {
+        label: "Proceed",
+        onClick() {
+          console.log("proceed confirmation");
+        }
+      }
     ]
   }
 };
@@ -48,13 +116,24 @@ function hideAll() {
   }
 }
 
-function render(mode) {
-  const config = SCREENS[mode];
-  if (!config) return;
+function validateParams(screen, params) {
+  const required = screen.requiredParams || [];
+  for (const key of required) {
+    if (!(key in params)) {
+      throw new Error(`Missing required param: ${key}`);
+    }
+  }
+}
+
+function showScreen(name, params) {
+  const screen = Screens[name];
+  if (!screen) throw new Error("Invalid screen: " + name);
+
+  validateParams(screen, params);
 
   hideAll();
 
-  for (const key of config.visible) {
+  for (const key of screen.visible) {
     const el = UI[key];
     if (el) el.style.display = "";
   }
@@ -62,44 +141,29 @@ function render(mode) {
   const buttons = UI.btnContainer.querySelectorAll("button");
 
   buttons.forEach((btn, i) => {
-    const cfg = config.buttons[i];
+    const cfg = screen.buttons[i];
 
     if (!cfg) {
       btn.style.display = "none";
+      btn.onclick = null;
       return;
     }
 
     btn.style.display = "";
     btn.textContent = cfg.label;
-    btn.dataset.action = cfg.action;
+
+    btn.onclick = () => cfg.onClick(params);
   });
+
+  if (screen.mount) {
+    screen.mount(params);
+  }
 }
 
-UI.btnContainer.addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
+document.addEventListener("DOMContentLoaded", async () => {
+  const params = (await api.params) || {};
 
-  const action = btn.dataset.action;
+  const screenType = params.type || "config";
 
-  if (action === "cancel") {
-    console.log("cancel");
-  }
-
-  if (action === "install") {
-    console.log("install");
-  }
-
-  if (action === "allow") {
-    console.log("allow");
-  }
-
-  if (action === "save") {
-    console.log("save");
-  }
-
-  if (action === "proceed") {
-    console.log("proceed");
-  }
+  showScreen(screenType, params);
 });
-
-render("installation");

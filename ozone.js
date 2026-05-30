@@ -11,6 +11,7 @@ export class Ozone {
       dbName: "vfs",
       sourceURL: new URL("./defaultSource", import.meta.url).pathname,
       versionURL: new URL("./versions.json", import.meta.url).pathname,
+      swURL: new URL("./sw.js", import.meta.url),
       launcher: null,
       ...config
     }
@@ -48,7 +49,7 @@ export class Ozone {
       JSON.stringify(this.config.launcher ?? null)
     )
 
-    const sw = new URL("./sw.js", import.meta.url)
+    const sw = new URL(this.config.swURL, location.href)
 
     sw.searchParams.set("v", v)
     sw.searchParams.set("launcher", launcher)
@@ -81,19 +82,6 @@ export class Ozone {
   }
 
   async install() {
-    try {
-
-      await ensureRoot()
-      await this.initializeOzone()
-      await this.ensureServiceWorker()
-
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async update() {
     try {
 
       await ensureRoot()

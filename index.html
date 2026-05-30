@@ -67,7 +67,6 @@
 <body>
     <div class="box">
         <button class="primary" onclick="install()">Install</button>
-        <button class="primary" onclick="update()">Update</button>
         <button class="ghost" onclick="loadInfo()">Info</button>
         <button class="danger" onclick="resetAll()">Reset</button>
         <button class="ghost" onclick="ensureSW()">Reload SW</button>
@@ -78,7 +77,7 @@
         import { Ozone } from "./ozone.js"
 
         const ozone = new Ozone({
-            defaultApps: ["files", "settings", "text", "menu", "media", "store"],
+            defaultApps: ["files", "settings", "text", "menu", "media", "store", "OzoneSystemUI"],
             sourceURL: "/defaultSource",
             launcher: {
                 author: "ozone",
@@ -91,6 +90,7 @@
                 "ozone_std_util.js"
             ],
             versionURL: "/versions.json",
+            swURL: "/sw.js?log=true"
         })
 
         const run = (label, fn, done = "Done", fail = "Failed") => async () => {
@@ -111,8 +111,13 @@
                 return false
             }
         }
-        window.install = run("Starting install...", () => ozone.install())
-        window.update = run("Starting update...", () => ozone.update())
+        window.install = run("Starting install...", async () => {
+            await ozone.install()
+
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+                location.reload()
+            })
+        })
         window.resetAll = run("Starting reset...", () => ozone.reset())
         window.ensureSW = run(
             "Checking service worker...",

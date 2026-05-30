@@ -502,12 +502,6 @@ async function route(request, url, parts) {
 
         const streamed = await cachedStreamFile(vfsPath)
 
-        console.log("shared asset", {
-            parts,
-            vfsPath,
-            streamed
-        })
-
         if (!streamed || streamed.type !== "file") {
             return new Response("Not found", { status: 404 })
         }
