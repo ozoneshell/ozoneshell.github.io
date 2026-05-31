@@ -104,6 +104,11 @@ var settings = {
         var file = resolvePath(path)
         var data = await readJSON(file)
 
+        if (key === "all") {
+            await writeJSON(file, value)
+            return
+        }
+
         data[key] = value
 
         await writeJSON(file, data)

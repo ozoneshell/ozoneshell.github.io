@@ -178,7 +178,34 @@ const ConfigPages = {
   inst: {
     title: "Instance",
     render() {
-      return `instance setting`;
+      return `
+      <div class="lineLabel">
+      <span>Instance configuration editor</span>
+      </div>
+      <div class="subbox">
+        <table>
+        <tr>
+        <th> Key </th>
+        <th> Value </th>
+        </tr>
+        <tr>
+        <td> SW URL </td>
+        <td> https://www.google.com/ </td>
+        </tr>
+        </table>
+      </div>
+      
+      <div class="lineLabel">
+      <span>Instance actions</span>
+      </div>
+      <div class="subbox">
+      Resetting this instance will remove all data including stored app data and system configuration.
+        <div class="btns">
+            <button>Update default apps</button>
+            <button>Reset instance</button>
+        </div>
+      </div>
+      `;
     }
   },
 

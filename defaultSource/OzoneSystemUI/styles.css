@@ -27,14 +27,15 @@ body {
 }
 
 .btns {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    gap: .5em;
-    padding-top: 1em;
-    &>* {
-      padding: .3em .5em;
-    }
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: .5em;
+  padding-top: 1em;
+
+  &>* {
+    padding: .3em .5em;
+  }
 }
 
 button {
@@ -64,15 +65,26 @@ active {
   padding: .5em;
 }
 
-h1, h2 {
+h1,
+h2 {
   margin: 0;
 }
 
+table {
+  width: 100%;
+
+  & th,
+  td {
+    box-shadow: 0 0 0 .5px #545454;
+    padding: .5em;
+  }
+}
+
 .configBtnHeader.DiaElem {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-end;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
 }
 
 .configBtn.active {
@@ -80,4 +92,28 @@ h1, h2 {
   outline: 0;
   z-index: 1;
   background-color: #363636;
+}
+
+.subbox {
+  box-shadow: 0 0 0 1px #545454;
+  padding: .5em;
+}
+
+.lineLabel {
+  margin: .5em 0;
+  position: relative;
+
+  &>span {
+    background-color: #101010;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    width: stretch;
+    background: #545454;
+    height: 1px;
+    margin: 9px;
+    margin-right: 0;
+  }
 }
