@@ -58,6 +58,7 @@
             background-color: var(--three);
             gap: .5em;
             border-radius: .5em;
+
             &.active {
                 background-color: var(--highone);
             }
@@ -68,6 +69,7 @@
 .view1 {
     .content_section {
         user-select: none;
+
         &>.content_topbar {
             background-color: var(--two);
             border: 1px solid var(--three);
@@ -206,7 +208,11 @@
     border-radius: .5em;
     max-width: calc(var(--std-sidebar-width) - 2em);
     overflow: auto;
+    & .active>.subel {
+        background-color: var(--highone);
+    }
 }
+
 .tree-node {
     --indent: 2px;
 }
@@ -215,6 +221,7 @@
     margin-left: 8px;
     padding-left: 2px;
     position: relative;
+
     &::after {
         content: "";
         height: calc(100% - 5px);
@@ -226,7 +233,7 @@
     }
 }
 
-.tree-node.collapsed > .children {
+.tree-node.collapsed>.children {
     display: none;
 }
 
@@ -243,6 +250,7 @@
     align-items: center;
     gap: .3em;
     z-index: 99;
+
     &::after {
         content: "";
         z-index: -1;
@@ -258,7 +266,8 @@
 .tree-node:hover>.subel {
     background: var(--four);
 }
-.tree-node.has-children > .subel::before {
+
+.tree-node.has-children>.subel::before {
     content: "keyboard_arrow_down ";
     font-family: 'Material Symbols Rounded';
     display: inline-block;
@@ -269,7 +278,7 @@
         'opsz' 24
 }
 
-.tree-node.collapsed > .subel::before {
+.tree-node.collapsed>.subel::before {
     transform: rotate(-90deg);
 }
 
@@ -290,4 +299,19 @@
 
 .path_input.input_active {
     background-color: var(--one);
+}
+
+.single_dir {
+    display: flex;
+    gap: .5em;
+    padding: 3px 1em;
+    border-radius: .5em;
+
+    &:hover {
+        background-color: var(--three);
+    }
+
+    &.active {
+        background-color: var(--highone);
+    }
 }

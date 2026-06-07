@@ -1,17 +1,9 @@
-:root {
-    --one: rgb(255 255 255);
-    --two: rgb(219 219 219);
-    --three: rgb(238 238 238);
-    --four: rgb(255 255 255);
-    --five: rgb(140, 143, 141);
-}
-
 .searchbar,
 input {
-    color: black;
+    color: white;
 
     &::placeholder {
-        color: rgba(0, 0, 0, 0.495);
+        color: rgba(255, 255, 255, 0.495);
     }
 }
 
@@ -58,6 +50,12 @@ body {
         }
     }
 
+    & .app_name {
+        width: 120%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     &:hover {
         background-color: #ffffff1c;
     }
@@ -73,7 +71,8 @@ body {
     flex-direction: row;
     align-items: center;
     width: 700px;
-    background-color: var(--two);
+    background-color: #ffffff3b;
+    backdrop-filter: blur(.5em);
     border-radius: .5em;
     transition: box-shadow .2s;
 
@@ -98,7 +97,6 @@ body {
     }
 
     &>.icon {
-        background-color: var(--highdark);
         font-size: 1.3em;
         color: var(--text);
         padding: .3em .5em;
@@ -134,11 +132,11 @@ img.bgimg {
         font: inherit;
         font-size: .9em;
         border: 0;
-        border-radius: .5em;
         display: flex;
         flex-direction: row;
         justify-content: space-between;
-        background-color: var(--three);
+        background-color: transparent;
+        border-right: 1px solid #ffffff1c;
 
         &.active {
             background: var(--highone);
@@ -288,4 +286,8 @@ img.bgimg {
             cursor: pointer;
         }
     }
+}
+
+dialog {
+    color: inherit;
 }

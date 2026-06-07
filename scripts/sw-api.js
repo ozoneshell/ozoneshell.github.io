@@ -4,7 +4,7 @@ import { mimeFromPath, openFile, settings, appStorage } from "/scripts/utility.j
 import { appParams, pendingResponses, liveReloadBases, getWindowEntry, windowRegistry, isNamespaceAllowed, registerWindow } from "./sw-registry.js"
 import { sysDialog, pendingDialogs } from "./utility.js"
 
-export { appParams, pendingResponses, liveReloadBases }
+export { appParams, pendingResponses, liveReloadBases, systemChannelKey }
 
 var appsRPCHandler = {
     async open(path, params, mode) {
@@ -300,6 +300,10 @@ export function resolveRpc(path) {
     return path.split(".").reduce((o, k) => o?.[k], rpc)
 }
 
+var systemChannelKey = rpc.events.register("systemEvents", {
+    appKey: null
+})
+
 export async function handleRpcMessage(e) {
     const d = e.data
     if (d?.type === "dialog-response") {
@@ -358,6 +362,11 @@ export async function handleRpcMessage(e) {
     }
 
     const fn = resolveRpc(d.method)
+    rpc.events.broadcast("systemChannelKey", {
+        type: "api_call",
+        namespace,
+        fn
+    }, {})
     let result = null
 
     try {

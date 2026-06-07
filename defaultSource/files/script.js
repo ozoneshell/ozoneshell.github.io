@@ -45,6 +45,7 @@ function render(node, parent, depth = 0) {
     wrapper.style.setProperty("--depth", depth)
 
     wrapper.dataset.path = node.path
+    wrapper.dataset.context = "tree";
 
     const header = document.createElement("div")
     header.className = "subel"
@@ -75,18 +76,55 @@ function render(node, parent, depth = 0) {
         }
     }
 }
-document.addEventListener("DOMContentLoaded", async () => {
+function resolveDirIcon(path) {
+    switch (path) {
+        case "/":
+            return "home";
+        default:
+            return "folder";
+    }
+}
+async function renderPinned() {
+    const pinnedDirs = await api.appStorage.get("pinnedDirs");
+    if (!pinnedDirs) return;
+    const container = document.querySelector("#pinnedFolders")
+    pinnedDirs.forEach(item => {
+        const element = document.createElement("div");
+        element.classList.add("single_dir");
+        element.dataset.path = item;
+        element.dataset.context = "folder";
+
+        const icondiv = document.createElement("div");
+        icondiv.classList.add("icon");
+        icondiv.innerText = resolveDirIcon(item);
+
+        const namediv = document.createElement("div");
+        namediv.classList.add("name");
+        namediv.innerText = item;
+
+        element.append(icondiv, namediv);
+        container.appendChild(element);
+    });
+}
+async function loadFoldersBar() {
     const raw = await buildTree("/")
     const tree = normalize(raw)
 
-    const container = document.querySelector("#filesystemTree")
+    const container = document.querySelector("#filesystemTree");
+    container.innerHTML = "";
     render(tree, container)
 
-    container.addEventListener("click", e => {
+    renderPinned();
+    const containerwhole = document.querySelector(".sidebar");
+    containerwhole.addEventListener("click", e => {
         const el = e.target.closest("[data-path]")
         if (!el) return
         renderFiles(el.dataset.path)
     })
+
+}
+document.addEventListener("DOMContentLoaded", async () => {
+    loadFoldersBar();
 
     const sessionDeterminer = (await api.params)?.type;
     if (sessionDeterminer == "file_selector") {
@@ -211,63 +249,61 @@ function getExtension(name) {
 
 class FileItem {
     constructor(item, container) {
-        this.item = item
-        this.el = document.createElement("div")
-        this.el.className = "singular_file"
+        this.item = item;
+        this.el = document.createElement("div");
+        this.el.className = "singular_file";
         this.el.dataset.path = item.path;
-        this.el.dataset.context = "file";
+        this.el.dataset.context = item.type === "folder" ? "folder" : "file";
 
-        const fileName = item.path.split("/").pop()
+        const fileName = item.path.split("/").pop();
 
-        const icon = document.createElement("div")
-        icon.className = "icon"
-        icon.textContent = item.type === "folder" ? "folder" : "description"
+        const icon = document.createElement("div");
+        icon.className = "icon";
+        icon.textContent = item.type === "folder" ? "folder" : "description";
 
-        if (item.type === "file") {
-            const ext = getExtension(fileName)
-            if (fileTypeIcons[ext]) icon.textContent = fileTypeIcons[ext]
+        const ext = getExtension(fileName);
+        if (item.type === "file" && fileTypeIcons[ext]) {
+            icon.textContent = fileTypeIcons[ext];
         }
 
-        const name = document.createElement("div")
-        name.className = "fileName"
-        name.textContent = fileName
+        const name = document.createElement("div");
+        name.className = "fileName";
+        name.textContent = fileName;
 
-        this.el.append(icon, name)
-        container.appendChild(this.el)
+        this.el.append(icon, name);
+        container.appendChild(this.el);
 
-        this.el.addEventListener("click", e => this.handleClick(e))
+        this.el.addEventListener("click", e => this.handleClick());
     }
 
     handleClick() {
-        if (this.el.classList.contains("selected")) {
-            this.open()
-            return
-        }
-        if (this.item.type == "file") {
-            openTopBarPage("file");
-        } else {
-            openTopBarPage("folder");
-        }
-
         document.querySelectorAll(".singular_file.selected")
-            .forEach(e => e.classList.remove("selected"))
+            .forEach(e => e.classList.remove("selected"));
 
-        this.el.classList.add("selected")
+        this.el.classList.add("selected");
+
+        this.open();
     }
 
     open() {
-        if (this.item.type === "folder") renderFiles(this.item.path)
-        else {
-            if (state.mode == "file_selector") {
-                api.apps.respond(this.item.path)
+        if (this.item.type === "folder") {
+            renderFiles(this.item.path);
+        } else {
+            if (state.mode === "file_selector") {
+                api.apps.respond(this.item.path);
             } else {
-                api.fileUtil.open(this.item.path)
+                api.fileUtil.open(this.item.path);
             }
         }
     }
 }
 
 async function renderFiles(path = state.path) {
+    [...document.querySelectorAll(`.active`)].forEach(element => element.classList.remove("active"));
+    const btnsMatching = document.querySelectorAll(`[data-path='${path}']`);
+    [...btnsMatching].forEach(element => {
+        element.classList.add("active");
+    })
     const container = document.querySelector("#filesList")
     container.innerHTML = ""
     state.path = path;
@@ -381,3 +417,46 @@ function setView(view) {
         el.classList.toggle("active", el.dataset.action === `${view}_view`)
     })
 }
+
+SystemContextMenu.init([
+    {
+        "data-context": "file",
+        actions: [
+            { label: "Open", fn: el => actionMap.open_file(el) },
+            { label: "Rename", fn: el => actionMap.rename_file(el) },
+            { label: "Delete", fn: el => actionMap.delete_file(el) },
+            {
+                label: "More",
+                actions: [
+                    { label: "Open With", fn: el => actionMap.open_with(el) },
+                    { label: "Export", fn: el => actionMap.export_file(el) }
+                ]
+            }
+        ]
+    },
+
+    {
+        "data-context": "folder",
+        actions: [
+            { label: "Open", fn: el => renderFiles(el.dataset.path) },
+            { label: "Rename", fn: el => actionMap.rename_folder(el) },
+            { label: "Delete", fn: el => actionMap.delete_folder(el) },
+            {
+                label: "View",
+                actions: [
+                    { label: "Grid", fn: () => setView("grid") },
+                    { label: "List", fn: () => setView("list") },
+                    { label: "Column", fn: () => setView("column") }
+                ]
+            }
+        ]
+    },
+
+    {
+        "data-context": "tree",
+        actions: [
+            { label: "Open", fn: el => renderFiles(el.dataset.path) },
+            { label: "Collapse", fn: el => el.closest(".tree-node")?.classList.toggle("collapsed") }
+        ]
+    }
+]);

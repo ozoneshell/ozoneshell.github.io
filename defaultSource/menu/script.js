@@ -113,3 +113,34 @@ const init = async () => {
 };
 
 init();
+
+const searchinput = document.querySelector(".searchbar>input");
+searchinput.addEventListener("keyup", (event) => {
+    if (event.key == "Enter")
+        searchStuff()
+})
+function searchStuff() {
+    const query = encodeURIComponent(searchinput.value.trim());
+    const engine = searchEngineDrpDwn.value;
+
+    let url = "https://www.google.com/search?q=" + query;
+
+    if (engine === "DuckDuckGo") {
+        url = "https://duckduckgo.com/?q=" + query;
+    } else if (engine === "Ecosia") {
+        url = "https://www.ecosia.org/search?q=" + query;
+    } else if (engine === "Startpage") {
+        url = "https://www.startpage.com/sp/search?query=" + query;
+    } else if (engine === "Bing") {
+        url = "https://www.bing.com/search?q=" + query;
+    } else if (engine === "Wikipedia") {
+        url = "https://en.wikipedia.org/w/index.php?search=" + query;
+    }
+
+    if (query) {
+        console.log(query)
+        window.open(url, "_blank");
+    }
+
+    searchinput.value = "";
+}
