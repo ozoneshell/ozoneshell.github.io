@@ -277,12 +277,20 @@ class FileItem {
     }
 
     handleClick() {
+        if (this.el.classList.contains("selected")) {
+            this.open()
+            return
+        }
+        if (this.item.type == "file") {
+            openTopBarPage("file");
+        } else {
+            openTopBarPage("folder");
+        }
+
         document.querySelectorAll(".singular_file.selected")
-            .forEach(e => e.classList.remove("selected"));
+            .forEach(e => e.classList.remove("selected"))
 
-        this.el.classList.add("selected");
-
-        this.open();
+        this.el.classList.add("selected")
     }
 
     open() {
