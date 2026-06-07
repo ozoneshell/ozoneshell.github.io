@@ -23,6 +23,15 @@
  *   A separate refcount file lives at  content/<contentId>.rc  (plain integer text).
  */
 
+function emitFs(action, target) {
+  rpc.events.broadcast("system", {
+    type: "fs",
+    action,
+    time: Date.now(),
+    target
+  })
+}
+
 async function exists(path) {
   path = norm(path)
   const node = await vfsresolvePath(path)
@@ -134,10 +143,10 @@ async function dirs() {
     const root = await opfsRoot()
     const vfs = await root.getDirectoryHandle("vfs", { create: true })
     const [nodes, content, idx, metaDir] = await Promise.all([
-      vfs.getDirectoryHandle("nodes",   { create: true }),
+      vfs.getDirectoryHandle("nodes", { create: true }),
       vfs.getDirectoryHandle("content", { create: true }),
-      vfs.getDirectoryHandle("idx",     { create: true }),
-      vfs.getDirectoryHandle("meta",    { create: true }),
+      vfs.getDirectoryHandle("idx", { create: true }),
+      vfs.getDirectoryHandle("meta", { create: true }),
     ])
     _dirs = { nodes, content, idx, metaDir }
     return _dirs
@@ -363,6 +372,7 @@ async function mkdir(path) {
     meta: { created: Date.now(), modified: Date.now() }
   }
   await writeNode(node)
+  emitFs("mkdir", path)
 }
 
 async function mkdirp(path) {
@@ -382,6 +392,7 @@ async function mkdirp(path) {
         id: uid(), name: part, parent: parentNode.id, type: "folder",
         meta: { created: Date.now(), modified: Date.now() }
       })
+      emitFs("mkdir", next)
     }
     cur = next
   }
@@ -448,6 +459,7 @@ async function writeFile(path, data) {
       }
     })
   }
+  emitFs("write", path)
 }
 
 async function readFile(path) {
@@ -493,6 +505,7 @@ async function move(srcPath, dstPath) {
   const { idx } = await dirs()
   await opfsDelete(idx, _idxKey(srcNode.parent, srcNode.name))
   await writeNode({ ...srcNode, name: dstName, parent: dstParent.id })
+  emitFs("move", dstPath)
 }
 
 async function copy(srcPath, dstPath) {
@@ -502,6 +515,7 @@ async function copy(srcPath, dstPath) {
   const srcNode = await vfsresolvePath(srcPath)
   if (!srcNode) throw new Error(`Not found: ${srcPath}`)
   await _copyNode(srcNode, dstPath)
+  emitFs("copy", dstPath)
 }
 
 async function _copyNode(srcNode, dstPath) {
@@ -531,6 +545,7 @@ async function remove(path) {
   const node = await vfsresolvePath(path)
   if (!node) return
   await _removeNode(node)
+  emitFs("remove", path)
 }
 
 async function _removeNode(node) {

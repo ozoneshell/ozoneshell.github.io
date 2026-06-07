@@ -403,3 +403,9 @@ export async function openFromSW(path, params = {}) {
 
     return url
 }
+
+const SYSTEM_CHANNEL = "system"
+
+rpc.events.register(SYSTEM_CHANNEL, {
+    appKey: "system"
+})
