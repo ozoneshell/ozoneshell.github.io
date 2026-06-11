@@ -14,7 +14,7 @@ function mimeFromPath(path) {
         woff2: "font/woff2",
         ttf: "font/ttf",
         mp4: "video/mp4",
-        mp4: "video/mkv",
+        mkv: "video/mkv",
         webm: "video/webm",
         mp3: "audio/mpeg",
         wav: "audio/wav",
