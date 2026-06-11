@@ -22,6 +22,7 @@
  *   contentId = SHA-1 hex of the raw bytes (content-addressable).
  *   A separate refcount file lives at  content/<contentId>.rc  (plain integer text).
  */
+import { rpc } from "./sw-api.js"
 
 function emitFs(action, target) {
   rpc.events.broadcast("system", {
