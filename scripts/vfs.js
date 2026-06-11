@@ -3,7 +3,6 @@
  * Author: darkdot
  *
  * VFS layout
- * 
  *   vfs/
  *     nodes/
  *       <nodeId>           <- one OPFS file per node
