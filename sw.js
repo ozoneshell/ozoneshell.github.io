@@ -134,10 +134,6 @@ self.addEventListener("fetch", e => {
 
             rpc.settings.get(`${author}/${appName}`, "appRegistry.json")
                 .then(registryItem => {
-                    if (registryItem) {
-                        const permissions = registryItem?.permissions ?? []
-                        return
-                    }
                     const capitalizedName = appName.charAt(0).toUpperCase() + appName.slice(1)
                     return rpc.settings.get(`${author}/${capitalizedName}`, "appRegistry.json")
                         .then(item => {
@@ -156,15 +152,6 @@ self.addEventListener("fetch", e => {
     if (request.mode === "navigate") {
         log("navigation request", pathname)
         e.respondWith(handleNavigation(request, pathname))
-
-        const cfg = self.__OZONE_CONFIG__
-        if (e.clientId && cfg?.launcher) {
-            const { author, name } = cfg.launcher
-            const appKey = `${author}/${name}`
-            rpc.settings.get(appKey, "appRegistry.json").then(registryItem => {
-                const permissions = registryItem?.permissions ?? []
-            })
-        }
     }
 })
 
